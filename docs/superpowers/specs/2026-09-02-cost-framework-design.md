@@ -72,9 +72,19 @@ Hooks are Node scripts (Node is already required by the existing GSD hooks; path
   "model": "sonnet",
   "autoCompactWindow": 220000,
   "disableClaudeAiConnectors": true,
-  "hooks": { "...framework hook entries, appended, not replacing existing GSD entries..." }
+  "hooks": {
+    "SessionStart":     [{ "matcher": "startup|resume|clear|compact", "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/handoff-load.js", "timeout": 5 }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/ctx-meter.js", "timeout": 5 }] }],
+    "PostToolUse":      [{ "matcher": ".*",   "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/ctx-meter.js", "timeout": 5 }] },
+                         { "matcher": "Read", "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/read-warn.js", "timeout": 5 }] }],
+    "PreToolUse":       [{ "matcher": "Edit|Write|MultiEdit|NotebookEdit", "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/ctx-guard.js", "timeout": 5 }] }],
+    "SubagentStart":    [{ "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/ledger.js", "timeout": 5 }] }],
+    "SubagentStop":     [{ "hooks": [{ "type": "command", "command": "node ~/.claude/hooks/ledger.js", "timeout": 5 }] }]
+  }
 }
 ```
+
+Hook entries are appended to any existing arrays for the same event; existing GSD entries are left in place. The installer uses the absolute Node path from `which node` at install time, not `~`.
 
 ## 5. Piece 1 — Context hygiene
 
