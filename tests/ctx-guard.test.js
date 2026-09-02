@@ -69,6 +69,14 @@ test('resolves a relative file_path against input.cwd, not the hook process cwd'
   assert.equal(r.out.hookSpecificOutput.permissionDecision, 'deny');
 });
 
+test('allows an empty or missing target in hard state (fail open)', () => {
+  const { T, tp, env, sid } = hardSession();
+  const call = (tool_input) => runHook('ctx-guard.js',
+    { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input }, env);
+  assert.equal(call({ file_path: '' }).out, null);
+  assert.equal(call({}).out, null);
+});
+
 test('ignores tools other than Edit|Write|MultiEdit|NotebookEdit', () => {
   const { T, tp, env, sid } = hardSession();
   const r = runHook('ctx-guard.js', { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'ls' } }, env);

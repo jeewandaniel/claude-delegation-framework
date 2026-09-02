@@ -22,12 +22,12 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
 
   const ti = input.tool_input || {};
   const target = ti.file_path || ti.notebook_path || '';
+  if (!target) return; // nothing to judge: fail open (spec section 8)
+
   const memDir = lib.memoryDir(input.transcript_path);
-  if (target) {
-    const rel = path.relative(memDir, path.resolve(input.cwd || process.cwd(), target));
-    const inMemory = rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
-    if (inMemory) return;
-  }
+  const rel = path.relative(memDir, path.resolve(input.cwd || process.cwd(), target));
+  const inMemory = rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  if (inMemory) return;
 
   const hp = lib.handoffPath(input.transcript_path);
   process.stdout.write(JSON.stringify({
