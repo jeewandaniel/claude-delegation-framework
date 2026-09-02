@@ -33,6 +33,11 @@ bin/ledger.sh             # today's subagent usage by agent
 
 Baseline on 2026-09-02 from this directory: ~30k / ~27k / ~22k. The desktop app session floor was ~100k before install.
 
+Measured on 2026-09-02 from this directory (headless `bin/measure.sh`, real `claude -p`, haiku):
+- before install: 30888 tokens
+- after install: 30202 tokens
+- after install, `--no-mcp`: 27706 tokens
+
 ## Acceptance test (run once after install, in a scratch project)
 
 1. Create `.claude/framework.json` with `{"softThreshold": 1000, "hardThreshold": 2000}`.
@@ -41,6 +46,30 @@ Baseline on 2026-09-02 from this directory: ~30k / ~27k / ~22k. The desktop app 
 4. Run `/handoff`. Expect the file written and the "You can /clear now" reply. Edits work again.
 5. `/clear`. Expect the first reply to open with "Resumed from handoff ...".
 6. Delete the scratch `.claude/framework.json`.
+
+## Acceptance log
+
+2026-09-02, after real `./install.sh` into `/Users/Jeewan/.claude` (backup: `/Users/Jeewan/.claude/settings.json.bak-20260902-182946-60099`).
+
+Steps 2 to 5 need an interactive Claude Code session (live hook messages, `/handoff`, `/clear`, the resumed line) and cannot be driven from this non-interactive harness. In their place, a headless equivalent was run in a fresh scratch project at `/tmp/fw-scratch` (`git init`, `.claude/framework.json` set to `{"softThreshold": 1000, "hardThreshold": 2000}`):
+
+```
+cd /tmp/fw-scratch
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "Run the Bash tool with the command 'echo hi'. Then reply with, verbatim, every line of hook or system context you received that starts with 'Session floor' or 'CONTEXT'. If you received none, say NONE." --model haiku --output-format json --max-turns 3
+```
+
+Result field, verbatim:
+
+> Session floor: 29k tokens of context before the first message.
+> CONTEXT 29k (hard limit 2k). STOP. Run /handoff now. File edits are blocked until the handoff file is written at /Users/Jeewan/.claude/projects/-private-tmp-fw-scratch/memory/handoff.md.
+
+- **Step 1** (create scratch `.claude/framework.json`): PASS — file created as above.
+- **Step 2** (Session floor line, then CONTEXT soft/hard): PASS — headless run above hit `hard` directly (29k ctx vs. hardThreshold 2000), matching the CONTEXT-hard message shape; state file confirms `"level":"hard"`.
+- State file check: `ls "$TMPDIR"/framework-ctx-*.json` after the run listed `framework-ctx-e6894559-7fb2-417a-bc36-8c6eab80a24f.json` (matches the session ID above, timestamped after the install), content `{"ctx":29013,"floor":29013,"level":"hard","handoffWrittenAt":null,"handoffCtx":null,"handoffAnnounced":false,"callsSinceMsg":0,"floorReported":true,"unavailableReported":true}`.
+- **Step 3** (edit denied with handoff path in reason): pending — needs an interactive session; Jeewan to run.
+- **Step 4** (`/handoff` writes the file, "You can /clear now"): pending — needs an interactive session; Jeewan to run.
+- **Step 5** (`/clear` then "Resumed from handoff ..."): pending — needs an interactive session; Jeewan to run.
+- **Step 6** (delete scratch `.claude/framework.json`): not yet done — `/tmp/fw-scratch` was left in place so Jeewan can run steps 3 to 5 interactively; its `.claude/framework.json` must be deleted afterwards.
 
 ## Known limits
 
