@@ -27,6 +27,10 @@ test('six agents with the right models and names', () => {
   }
   assert.equal(frontmatter('agents/decider.md').tools, 'Read, Grep, Glob');
   assert.equal(frontmatter('agents/scout.md').tools, 'Read, Grep, Glob, Bash');
+  assert.equal(frontmatter('agents/judge.md').tools, 'Read, Grep, Glob, Bash');
+  assert.equal(frontmatter('agents/researcher.md').tools, 'Read, Grep, Glob, WebSearch, WebFetch, ToolSearch');
+  assert.equal(frontmatter('agents/worker.md').tools, undefined);
+  assert.equal(frontmatter('agents/builder.md').tools, undefined);
 });
 
 test('CLAUDE.md block is under 400 words and names every agent and trigger', () => {
