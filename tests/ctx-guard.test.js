@@ -1,6 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 const { tmp, writeTranscript, runHook, ctxOf } = require('./helpers');
 
@@ -35,6 +36,15 @@ test('allows writes to the handoff file and to MEMORY.md', () => {
 test('allows everything once the handoff has been written', () => {
   const { T, env, meter, guard, hp } = hardSession();
   runHook('ctx-meter.js', { ...meter, tool_name: 'Write', tool_input: { file_path: hp } }, env);
+  assert.equal(guard('Edit', path.join(T, 'src', 'app.js')).out, null);
+});
+
+test('a handoff written directly to disk (no Write tool event) clears the hard block', () => {
+  const { T, env, meter, guard, hp } = hardSession();
+  assert.equal(guard('Edit', path.join(T, 'src', 'app.js')).out.hookSpecificOutput.permissionDecision, 'deny');
+  fs.mkdirSync(path.dirname(hp), { recursive: true });
+  fs.writeFileSync(hp, '# Handoff\n');
+  assert.match(ctxOf(runHook('ctx-meter.js', meter, env).out), /Handoff saved at/);
   assert.equal(guard('Edit', path.join(T, 'src', 'app.js')).out, null);
 });
 

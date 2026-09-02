@@ -50,6 +50,7 @@ You can /clear now. The next session will load this automatically.
 
 ## Rules
 
+- Write `handoff.md` with the Write tool, not through Bash (`sed`, heredocs); the hooks detect the Write tool immediately.
 - Start no new work once the handoff begins.
 - Do not summarise from memory when the transcript has the facts.
 - Every decision line carries evidence or says "no evidence, judgment call".

@@ -2,7 +2,11 @@
 'use strict';
 // Context meter: PostToolUse (all tools) + UserPromptSubmit.
 // Measures live context from the transcript, injects soft/hard prompts, tracks handoff state.
+const fs = require('fs');
 const lib = require('./lib/framework-lib');
+
+const UNAVAILABLE = 'Context meter unavailable in this session (transcript usage not found). '
+  + 'Treat context size as unknown and run /handoff early rather than late.';
 
 const stdinTimeout = setTimeout(() => process.exit(0), 10000);
 
@@ -19,37 +23,40 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   const cfg = lib.loadConfig(input.cwd);
   const st = lib.readState(session);
   const msgs = [];
+  if (st.startedAt === null) st.startedAt = Date.now();
 
-  if (!input.transcript_path) {
-    if (!st.unavailableReported) {
-      st.unavailableReported = true;
-      msgs.push('Context meter unavailable in this session (transcript usage not found). Treat context size as unknown and run /handoff early rather than late.');
-    }
+  const finish = () => {
     lib.writeState(session, st);
     if (msgs.length) lib.emit(event, msgs.join('\n'));
-    return;
-  }
+  };
+  const unavailable = () => {
+    if (!st.unavailableReported) {
+      st.unavailableReported = true;
+      msgs.push(UNAVAILABLE);
+    }
+    finish();
+  };
 
-  const m = lib.measureContext(input.transcript_path);
+  if (!input.transcript_path) return unavailable();
+
+  const m = lib.measureContext(input.transcript_path, { needFloor: st.floor === null });
   let ctx = null;
   if (m.ok) {
     ctx = m.ctx;
-    if (st.floor === null) st.floor = m.floor;
+    if (st.floor === null && m.floor !== null) st.floor = m.floor;
   } else {
     const b = lib.bridgeContext(session);
     if (b !== null) ctx = b;
   }
 
   if (ctx === null) {
-    if (!st.unavailableReported) {
-      st.unavailableReported = true;
-      msgs.push('Context meter unavailable in this session (transcript usage not found). Treat context size as unknown and run /handoff early rather than late.');
-    }
-    lib.writeState(session, st);
-    if (msgs.length) lib.emit(event, msgs.join('\n'));
-    return;
+    // A transcript with no assistant line yet (turn one) is not measurable, not broken: stay silent
+    // and do not latch, so the notice is kept for transcripts we genuinely cannot read.
+    if (m.reason === 'not-yet') return finish();
+    return unavailable();
   }
 
+  st.unavailableReported = false;
   st.ctx = ctx;
   if (!st.floorReported && st.floor !== null) {
     st.floorReported = true;
@@ -57,13 +64,24 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   }
 
   const hp = lib.handoffPath(input.transcript_path);
-
-  // Handoff written this call?
-  if (event === 'PostToolUse' && hp && /^(Write|Edit|MultiEdit)$/.test(input.tool_name || '')
-      && input.tool_input && lib.samePath(input.tool_input.file_path || '', hp)) {
+  const markHandoff = () => {
     st.handoffWrittenAt = new Date().toISOString();
     st.handoffCtx = ctx;
     st.handoffAnnounced = false;
+  };
+
+  // Handoff written this call through a file tool?
+  if (event === 'PostToolUse' && hp && /^(Write|Edit|MultiEdit)$/.test(input.tool_name || '')
+      && input.tool_input && lib.samePath(input.tool_input.file_path || '', hp)) {
+    markHandoff();
+  }
+
+  // Or written by any other means (Bash heredoc, external editor): the file is newer than
+  // this session's first meter run.
+  if (!st.handoffWrittenAt && st.startedAt !== null) {
+    try {
+      if (fs.statSync(hp).mtimeMs > st.startedAt) markHandoff();
+    } catch { /* missing file: not written */ }
   }
 
   // Handoff gone stale: context grew a lot since it was written.
@@ -72,6 +90,8 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
     st.handoffCtx = null;
     st.handoffAnnounced = false;
     st.callsSinceMsg = Number.MAX_SAFE_INTEGER;
+    // Only a handoff written from now on counts again.
+    st.startedAt = Date.now();
   }
 
   const level = ctx >= cfg.hardThreshold ? 'hard' : ctx >= cfg.softThreshold ? 'soft' : 'ok';
@@ -97,6 +117,5 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
     }
   }
 
-  lib.writeState(session, st);
-  if (msgs.length) lib.emit(event, msgs.join('\n'));
+  finish();
 })().catch(() => { /* never fail a tool call */ });

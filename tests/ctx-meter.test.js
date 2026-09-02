@@ -74,6 +74,31 @@ test('transcript without usage: unavailable notice once', () => {
   assert.equal(runHook('ctx-meter.js', base, env).out, null);
 });
 
+function stateOf(T, sessionId) {
+  return JSON.parse(require('fs').readFileSync(path.join(T, `framework-ctx-${sessionId}.json`), 'utf8'));
+}
+
+test('transcript with no assistant line yet: silent, does not latch unavailable', () => {
+  const { T, env, base } = setup([]);
+  const r = runHook('ctx-meter.js', base, env);
+  assert.equal(r.status, 0);
+  assert.equal(r.out, null);
+  assert.equal(stateOf(T, base.session_id).unavailableReported, false);
+  // once the transcript gains a usage line the meter measures normally
+  writeTranscript(T, [20000, 155000]);
+  assert.match(ctxOf(runHook('ctx-meter.js', base, env).out), /Session floor: 20k tokens/);
+});
+
+test('unrecognised transcript still latches the notice, and a later measurement clears it', () => {
+  const { T, env, base } = setup([], { noUsage: true });
+  assert.match(ctxOf(runHook('ctx-meter.js', base, env).out), /Context meter unavailable/);
+  assert.equal(stateOf(T, base.session_id).unavailableReported, true);
+  assert.equal(runHook('ctx-meter.js', base, env).out, null);
+  writeTranscript(T, [20000]);
+  runHook('ctx-meter.js', base, env);
+  assert.equal(stateOf(T, base.session_id).unavailableReported, false);
+});
+
 test('missing transcript_path is unavailable even with a bridge file present (no "null" in message)', () => {
   const T = tmp();
   const env = { FRAMEWORK_HOME: T, TMPDIR: T };
