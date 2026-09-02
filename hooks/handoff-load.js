@@ -11,7 +11,17 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   clearTimeout(stdinTimeout);
   let input;
   try { input = JSON.parse(raw); } catch { return; }
-  if (lib.isSubagent(input) || !input.transcript_path) return;
+  if (lib.isSubagent(input)) return;
+
+  // The context window is fresh at every SessionStart (startup|resume|clear|compact), so any
+  // level a reused session_id carries is stale and would deny the first edits. Drop the ctx
+  // state; the meter recomputes it from the next measurement.
+  const session = lib.safeSession(input.session_id);
+  if (session) {
+    try { fs.unlinkSync(lib.auxPath(session, 'ctx')); } catch { /* nothing to reset */ }
+  }
+
+  if (!input.transcript_path) return;
 
   const hp = lib.handoffPath(input.transcript_path);
   let content;

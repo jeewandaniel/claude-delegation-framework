@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { tmp, runHook, ctxOf } = require('./helpers');
+const { tmp, writeTranscript, runHook, ctxOf } = require('./helpers');
 
 function input(T) {
   return { session_id: 'h1', transcript_path: path.join(T, 's.jsonl'), cwd: T, hook_event_name: 'SessionStart', source: 'clear' };
@@ -59,4 +59,21 @@ test('handoff mtime in the future is clamped to 0h old', () => {
   const m = ctxOf(runHook('handoff-load.js', input(T), { FRAMEWORK_HOME: T, TMPDIR: T }).out);
   assert.match(m, /, 0h old\)/);
   assert.doesNotMatch(m, /-5h/);
+});
+
+test('SessionStart resets the ctx state so a reused session_id no longer blocks edits', () => {
+  const T = tmp();
+  const tp = writeTranscript(T, [20000, 195000]);
+  const env = { FRAMEWORK_HOME: T, TMPDIR: T };
+  const sid = 'reuse-' + path.basename(T);
+  const meter = { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: {} };
+  runHook('ctx-meter.js', meter, env);
+  const guard = () => runHook('ctx-guard.js',
+    { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: path.join(T, 'src', 'a.js') } }, env);
+  assert.equal(guard().out.hookSpecificOutput.permissionDecision, 'deny');
+
+  const r = runHook('handoff-load.js', { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'SessionStart', source: 'clear' }, env);
+  assert.equal(r.status, 0);
+  assert.ok(!fs.existsSync(path.join(T, `framework-ctx-${sid}.json`)), 'ctx state file must be removed');
+  assert.equal(guard().out, null);
 });
