@@ -40,3 +40,17 @@ test('project override of readWarnLines applies', () => {
   const f = fileWithLines(T, 'mid.js', 80);
   assert.match(ctxOf(read(T, 'r3', f).out), /read 81 lines/);
 });
+
+test('sliced read within limit of a big file is silent', () => {
+  const T = tmp();
+  const big = fileWithLines(T, 'big.js', 400);
+  const r = read(T, 'r4', big, { tool_input: { file_path: big, offset: 100, limit: 50 } });
+  assert.equal(r.out, null);
+});
+
+test('sliced read whose limit still exceeds readWarnLines warns using the limit', () => {
+  const T = tmp();
+  const big = fileWithLines(T, 'big.js', 400);
+  const r = read(T, 'r5', big, { tool_input: { file_path: big, limit: 350 } });
+  assert.match(ctxOf(r.out), /read 350 lines/);
+});

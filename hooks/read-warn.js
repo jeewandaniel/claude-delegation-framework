@@ -23,11 +23,15 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
     lines = text.length ? text.split('\n').length : 0;
   } catch { return; }
 
+  const limit = Number(input.tool_input.limit);
+  if (Number.isFinite(limit) && limit > 0) lines = Math.min(limit, lines);
+
   const cfg = lib.loadConfig(input.cwd);
   if (lines <= cfg.readWarnLines) return;
 
   const aux = lib.readAux(session, 'read');
   aux.bigReads = (aux.bigReads || 0) + 1;
+  // fires on the first big read, then again once readWarnEvery further big reads have passed
   const fire = aux.bigReads === 1 || aux.bigReads > cfg.readWarnEvery + 1;
   if (fire) aux.bigReads = 1;
   lib.writeAux(session, 'read', aux);
