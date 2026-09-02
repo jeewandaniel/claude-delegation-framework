@@ -64,7 +64,7 @@ Result field, verbatim:
 > CONTEXT 29k (hard limit 2k). STOP. Run /handoff now. File edits are blocked until the handoff file is written at /Users/Jeewan/.claude/projects/-private-tmp-fw-scratch/memory/handoff.md.
 
 - **Step 1** (create scratch `.claude/framework.json`): PASS — file created as above.
-- **Step 2** (Session floor line, then CONTEXT soft/hard): PASS — headless run above hit `hard` directly (29k ctx vs. hardThreshold 2000), matching the CONTEXT-hard message shape; state file confirms `"level":"hard"`.
+- **Step 2** (Session floor line, then CONTEXT soft/hard): PARTIAL (hard path only; soft-then-hard progression not separately observable in one shot) — headless run above hit `hard` directly (29k ctx vs. hardThreshold 2000), matching the CONTEXT-hard message shape; state file confirms `"level":"hard"`.
 - State file check: `ls "$TMPDIR"/framework-ctx-*.json` after the run listed `framework-ctx-e6894559-7fb2-417a-bc36-8c6eab80a24f.json` (matches the session ID above, timestamped after the install), content `{"ctx":29013,"floor":29013,"level":"hard","handoffWrittenAt":null,"handoffCtx":null,"handoffAnnounced":false,"callsSinceMsg":0,"floorReported":true,"unavailableReported":true}`.
 - **Step 3** (edit denied with handoff path in reason): pending — needs an interactive session; Jeewan to run.
 - **Step 4** (`/handoff` writes the file, "You can /clear now"): pending — needs an interactive session; Jeewan to run.
