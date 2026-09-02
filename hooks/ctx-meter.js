@@ -39,7 +39,7 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
 
   if (!input.transcript_path) return unavailable();
 
-  const m = lib.measureContext(input.transcript_path, { needFloor: st.floor === null });
+  const m = lib.measureContext(input.transcript_path, { needFloor: st.floor === null, ignoreBefore: st.ignoreBefore });
   let ctx = null;
   if (m.ok) {
     ctx = m.ctx;

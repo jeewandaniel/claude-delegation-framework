@@ -2,7 +2,7 @@
 
 Global Claude Code setup that keeps quality while cutting usage-limit consumption. Three pieces:
 
-1. **Context hygiene.** A hook meters live context from the session transcript. At 150k it asks for a handoff; at 190k it blocks file edits until `/handoff` has written the handoff file; after `/clear`, the next session loads that file automatically.
+1. **Context hygiene.** A hook meters live context from the session transcript. At 150k it asks for a handoff; at 190k it blocks file edits until `/handoff` has written the handoff file; after `/clear`, the next session loads that file automatically. On auto-compaction (SessionStart source `compact`), no handoff is loaded — a compaction summary already carries the live state — and the meter records the transcript's byte offset at that moment so pre-compaction usage lines are never measured as current context.
 2. **Routing.** Sonnet main loop, six agents: scout (Haiku), researcher (Sonnet), worker (Sonnet), builder (Opus), judge (Opus), decider (Fable). Listed escalation triggers and an evidence rule live in the global CLAUDE.md block.
 3. **MCP scoping.** Account connectors off globally, back on per project with `templates/project/.claude/settings.json`.
 

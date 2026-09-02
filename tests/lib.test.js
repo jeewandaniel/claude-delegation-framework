@@ -66,6 +66,44 @@ test('measureContext falls back to a full read when the only usage line is beyon
   assert.equal(m.ctx, 4242);
 });
 
+test('measureContext ignoreBefore: floor is the first usage line after the offset, not the pre-compact one', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = path.join(T, 'w.jsonl');
+  const preLine = usageLine(570000); // stale, pre-compact
+  const prefix = preLine + '\n';
+  const ignoreBefore = Buffer.byteLength(prefix, 'utf8'); // compact happened right after this line
+  fs.writeFileSync(tp, prefix + usageLine(15000) + '\n' + usageLine(18000) + '\n');
+  const m = lib.measureContext(tp, { ignoreBefore });
+  assert.deepEqual(m, { ok: true, ctx: 18000, floor: 15000 });
+});
+
+test('measureContext ignoreBefore: nothing after the offset yet reports not-yet, never the stale figure', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = path.join(T, 'v.jsonl');
+  const preLine = usageLine(570000);
+  fs.writeFileSync(tp, preLine + '\n');
+  const ignoreBefore = Buffer.byteLength(preLine, 'utf8') + 1;
+  // sanity: without the offset the stale line is found at all
+  assert.deepEqual(lib.measureContext(tp), { ok: true, ctx: 570000, floor: 570000 });
+  assert.deepEqual(lib.measureContext(tp, { ignoreBefore }), { ok: false, reason: 'not-yet' });
+});
+
+test('measureContext ignoreBefore composes with the tail-read fast path: a stale line inside the tail window is still ignored', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = path.join(T, 'z.jsonl');
+  const preLine = usageLine(570000);
+  const content = [...filler(6), preLine].join('\n') + '\n';
+  fs.writeFileSync(tp, content);
+  assert.ok(fs.statSync(tp).size > 262144, 'fixture must exceed the tail window');
+  const ignoreBefore = Buffer.byteLength(content, 'utf8'); // compact happened right after this line
+  // sanity: the stale line really is inside the tail window when unfiltered
+  assert.deepEqual(lib.measureContext(tp, { needFloor: false }), { ok: true, ctx: 570000, floor: null });
+  assert.deepEqual(lib.measureContext(tp, { needFloor: false, ignoreBefore }), { ok: false, reason: 'not-yet' });
+});
+
 test('sumOutputTokens adds output tokens across assistant lines', () => {
   const T = tmp();
   const lib = loadLib(T);

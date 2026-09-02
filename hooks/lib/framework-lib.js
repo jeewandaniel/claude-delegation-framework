@@ -55,6 +55,9 @@ const STATE_DEFAULTS = {
   ctx: 0, floor: null, level: 'ok', startedAt: null,
   handoffWrittenAt: null, handoffCtx: null, handoffAnnounced: false,
   callsSinceMsg: 0, floorReported: false, unavailableReported: false,
+  // Byte offset into the transcript at the moment of a SessionStart "compact": usage lines
+  // starting before this offset predate the compaction and must never be measured as current.
+  ignoreBefore: null,
 };
 function readState(sessionId) {
   return { ...STATE_DEFAULTS, ...readAux(sessionId, 'ctx') };
@@ -96,7 +99,7 @@ function readTail(file, bytes) {
     const buf = Buffer.alloc(len);
     if (len > 0) fs.readSync(fd, buf, 0, len, start);
     // A partial tail may start mid-line; that line fails JSON.parse and is skipped.
-    return { text: buf.toString('utf8'), partial: start > 0 };
+    return { text: buf.toString('utf8'), partial: start > 0, start };
   } catch {
     return null;
   } finally {
@@ -104,11 +107,19 @@ function readTail(file, bytes) {
   }
 }
 
-function scanUsage(text) {
+// baseOffset: absolute byte offset in the file where `text` begins (0 for a full read, or
+// wherever the tail window starts). ignoreBefore: usage lines whose absolute start offset is
+// before this are skipped entirely (post-compaction: pre-compaction lines must never count),
+// even when the tail window happens to include some of them.
+function scanUsage(text, baseOffset = 0, ignoreBefore = null) {
   let first = null;
   let last = null;
   let assistant = 0;
+  let offset = baseOffset;
   for (const line of text.split('\n')) {
+    const lineStart = offset;
+    offset += Buffer.byteLength(line, 'utf8') + 1; // +1 for the '\n' the split ate
+    if (ignoreBefore !== null && lineStart < ignoreBefore) continue;
     if (!line) continue;
     let d;
     try { d = JSON.parse(line); } catch { continue; }
@@ -124,22 +135,25 @@ function scanUsage(text) {
   return { first, last, assistant };
 }
 
-// reason 'not-yet': the transcript has no assistant lines at all (turn one) — not measurable yet.
-// reason 'no-usage': assistant lines exist but none carry usage — unrecognised format.
+// reason 'not-yet': the transcript has no assistant lines at all (turn one, or none since
+// opts.ignoreBefore) — not measurable yet. reason 'no-usage': assistant lines exist but none
+// carry usage — unrecognised format.
 // opts.needFloor false: only the latest usage is needed, so a bounded tail read suffices.
+// opts.ignoreBefore: byte offset before which usage lines are ignored (see scanUsage above).
 function measureContext(transcriptPath, opts = {}) {
   const needFloor = opts.needFloor !== false;
+  const ignoreBefore = typeof opts.ignoreBefore === 'number' ? opts.ignoreBefore : null;
   if (!needFloor) {
     const tail = readTail(transcriptPath, TAIL_BYTES);
     if (tail === null) return { ok: false, reason: 'unreadable' };
-    const t = scanUsage(tail.text);
+    const t = scanUsage(tail.text, tail.start, ignoreBefore);
     if (t.last !== null) return { ok: true, ctx: t.last, floor: null };
     if (!tail.partial) return { ok: false, reason: t.assistant > 0 ? 'no-usage' : 'not-yet' };
     // tail held no usage line: fall through to the full read
   }
   let text;
   try { text = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { ok: false, reason: 'unreadable' }; }
-  const s = scanUsage(text);
+  const s = scanUsage(text, 0, ignoreBefore);
   if (s.last === null) return { ok: false, reason: s.assistant > 0 ? 'no-usage' : 'not-yet' };
   return { ok: true, ctx: s.last, floor: s.first };
 }

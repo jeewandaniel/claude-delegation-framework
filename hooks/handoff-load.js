@@ -19,7 +19,27 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   const session = lib.safeSession(input.session_id);
   if (session) {
     try { fs.unlinkSync(lib.auxPath(session, 'ctx')); } catch { /* nothing to reset */ }
+
+    if (input.source === 'compact') {
+      // A compaction summary already carries the live state as of "now" — the transcript's
+      // usage lines up to this point describe the *pre-compaction* session and must never be
+      // read as the current size. Record where the old content ends so the meter can skip it.
+      let ignoreBefore = null;
+      if (input.transcript_path) {
+        try { ignoreBefore = fs.statSync(input.transcript_path).size; } catch { /* leave null */ }
+      }
+      if (ignoreBefore !== null) {
+        const st = lib.readState(session); // fresh defaults: the file was just unlinked
+        st.ignoreBefore = ignoreBefore;
+        st.floorReported = true; // no "Session floor" line for a session that didn't start now
+        lib.writeState(session, st);
+      }
+    }
   }
+
+  // A compaction summary already carries the live state; injecting a (possibly day-old, for a
+  // different job) handoff on top of it would be actively misleading. Nothing else to do here.
+  if (input.source === 'compact') return;
 
   if (!input.transcript_path) return;
 
