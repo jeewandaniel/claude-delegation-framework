@@ -5,6 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const lib = require('./lib/framework-lib');
 
+// Ledger file names use the LOCAL calendar date (bin/ledger.sh's default `date +%Y-%m-%d` is also local).
+function localDay(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 const stdinTimeout = setTimeout(() => process.exit(0), 10000);
 
 (async () => {
@@ -36,5 +42,5 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
 
   const dir = path.join(lib.HOME, 'framework', 'ledger');
   fs.mkdirSync(dir, { recursive: true });
-  fs.appendFileSync(path.join(dir, `${now.toISOString().slice(0, 10)}.jsonl`), JSON.stringify(rec) + '\n');
+  fs.appendFileSync(path.join(dir, `${localDay(now)}.jsonl`), JSON.stringify(rec) + '\n');
 })().catch(() => { /* silent */ });

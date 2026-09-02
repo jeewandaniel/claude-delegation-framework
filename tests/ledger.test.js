@@ -47,3 +47,16 @@ test('ledger.sh summarises a day', () => {
   assert.match(r.stdout, /agent\truns\tavg_s\toutput_tok\tcontext_tok/);
   assert.match(r.stdout, /judge\t1\t\d+\t200\t8000/);
 });
+
+test('ledger.sh with no date argument defaults to today (local), matching the hook file name', () => {
+  const T = tmp();
+  const env = { ...process.env, FRAMEWORK_HOME: T, TMPDIR: T };
+  const agentTp = writeTranscript(T, [3000, 8000]);
+  runHook('ledger.js', { session_id: 'L4', hook_event_name: 'SubagentStart', agent_id: 'c1', agent_type: 'worker', cwd: T }, env);
+  runHook('ledger.js', { session_id: 'L4', hook_event_name: 'SubagentStop', agent_id: 'c1', agent_type: 'worker', cwd: T, agent_transcript_path: agentTp }, env);
+  const r = spawnSync('bash', [path.join(ROOT, 'bin', 'ledger.sh')], { encoding: 'utf8', env });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /agent\truns\tavg_s\toutput_tok\tcontext_tok/);
+  assert.match(r.stdout, /worker\t1\t\d+\t200\t8000/);
+  assert.doesNotMatch(r.stdout, /no ledger for/);
+});

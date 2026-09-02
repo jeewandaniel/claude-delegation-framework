@@ -2,6 +2,7 @@
 # Summarise one day of the subagent usage ledger. Usage: ledger.sh [YYYY-MM-DD]
 set -euo pipefail
 DIR="${FRAMEWORK_HOME:-$HOME/.claude}/framework/ledger"
+# Default day is the LOCAL calendar date, matching the ledger file names hooks/ledger.js writes.
 DAY="${1:-$(date +%Y-%m-%d)}"
 FILE="$DIR/$DAY.jsonl"
 if [ ! -f "$FILE" ]; then
