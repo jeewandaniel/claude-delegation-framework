@@ -48,3 +48,15 @@ test('subagent start is ignored', () => {
   const r = runHook('handoff-load.js', { ...input(T), agent_id: 'sub' }, { FRAMEWORK_HOME: T, TMPDIR: T });
   assert.equal(r.out, null);
 });
+
+test('handoff mtime in the future is clamped to 0h old', () => {
+  const T = tmp();
+  fs.mkdirSync(path.join(T, 'memory'));
+  const hp = path.join(T, 'memory', 'handoff.md');
+  fs.writeFileSync(hp, '# future');
+  const future = new Date(Date.now() + 5 * 3600000);
+  fs.utimesSync(hp, future, future);
+  const m = ctxOf(runHook('handoff-load.js', input(T), { FRAMEWORK_HOME: T, TMPDIR: T }).out);
+  assert.match(m, /, 0h old\)/);
+  assert.doesNotMatch(m, /-5h/);
+});

@@ -21,7 +21,7 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
     stat = fs.statSync(hp);
   } catch { return; }
 
-  const ageDays = (Date.now() - stat.mtimeMs) / 86400000;
+  const ageDays = Math.max(0, (Date.now() - stat.mtimeMs) / 86400000);
   const age = ageDays < 1 ? `${Math.round(ageDays * 24)}h old` : `${Math.round(ageDays)}d old`;
   const stale = ageDays > 14
     ? ' This handoff is older than 14 days; confirm with the user that it is still current before acting on it.'
