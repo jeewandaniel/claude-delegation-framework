@@ -1,0 +1,26 @@
+{
+  "model": "sonnet",
+  "autoCompactWindow": 220000,
+  "disableClaudeAiConnectors": true,
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "startup|resume|clear|compact", "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/handoff-load.js\"", "timeout": 5 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ctx-meter.js\"", "timeout": 5 }] }
+    ],
+    "PostToolUse": [
+      { "matcher": ".*", "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ctx-meter.js\"", "timeout": 5 }] },
+      { "matcher": "Read", "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/read-warn.js\"", "timeout": 5 }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Edit|Write|MultiEdit|NotebookEdit", "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ctx-guard.js\"", "timeout": 5 }] }
+    ],
+    "SubagentStart": [
+      { "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ledger.js\"", "timeout": 5 }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ledger.js\"", "timeout": 5 }] }
+    ]
+  }
+}
