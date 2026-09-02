@@ -69,6 +69,16 @@ test('installer refuses invalid settings.json', () => {
   assert.match(r.stdout + r.stderr, /not valid JSON/);
 });
 
+test('installer refuses non-object hooks in settings.json', () => {
+  const T = tmp();
+  const original = JSON.stringify({ hooks: [] });
+  fs.writeFileSync(path.join(T, 'settings.json'), original);
+  const r = install(T);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout + r.stderr, /'hooks' is not an object/);
+  assert.equal(fs.readFileSync(path.join(T, 'settings.json'), 'utf8'), original, 'settings.json left unchanged');
+});
+
 test('installer creates settings.json and CLAUDE.md when absent', () => {
   const T = tmp();
   const r = install(T);

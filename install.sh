@@ -31,7 +31,7 @@ if ! "$NODE" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
   echo "$SETTINGS is not valid JSON; refusing to touch it" >&2
   exit 1
 fi
-BAK="$SETTINGS.bak-$(date +%Y%m%d-%H%M%S)"
+BAK="$SETTINGS.bak-$(date +%Y%m%d-%H%M%S)-$$"
 cp "$SETTINGS" "$BAK"
 "$NODE" "$REPO/bin/merge-settings.js" "$SETTINGS" "$REPO/settings/settings.patch.json" "$DEST/hooks" "$NODE"
 

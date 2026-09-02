@@ -11,6 +11,10 @@ if (!settingsFile || !patchFile || !hooksDir || !nodeBin) {
 }
 
 const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+if (settings.hooks !== undefined && (typeof settings.hooks !== 'object' || settings.hooks === null || Array.isArray(settings.hooks))) {
+  console.error(`${settingsFile}: 'hooks' is not an object; refusing to merge`);
+  process.exit(2);
+}
 const patchRaw = fs.readFileSync(patchFile, 'utf8')
   .replace(/\{\{HOOKS_DIR\}\}/g, hooksDir)
   .replace(/\{\{NODE\}\}/g, nodeBin);
