@@ -52,7 +52,7 @@ function writeAux(sessionId, name, obj) {
 }
 
 const STATE_DEFAULTS = {
-  ctx: 0, floor: null, level: 'ok',
+  ctx: 0, floor: null, level: 'ok', startedAt: null,
   handoffWrittenAt: null, handoffCtx: null, handoffAnnounced: false,
   callsSinceMsg: 0, floorReported: false, unavailableReported: false,
 };
@@ -82,18 +82,66 @@ function eachAssistantUsage(transcriptPath, fn) {
   return true;
 }
 
-function measureContext(transcriptPath) {
+// Transcripts grow without bound; reading the whole file on every tool call is wasteful.
+// The latest usage line is almost always inside the last TAIL_BYTES.
+const TAIL_BYTES = 262144;
+
+function readTail(file, bytes) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const start = Math.max(0, size - bytes);
+    const len = size - start;
+    const buf = Buffer.alloc(len);
+    if (len > 0) fs.readSync(fd, buf, 0, len, start);
+    // A partial tail may start mid-line; that line fails JSON.parse and is skipped.
+    return { text: buf.toString('utf8'), partial: start > 0 };
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* best effort */ } }
+  }
+}
+
+function scanUsage(text) {
   let first = null;
   let last = null;
-  const readable = eachAssistantUsage(transcriptPath, (u) => {
+  let assistant = 0;
+  for (const line of text.split('\n')) {
+    if (!line) continue;
+    let d;
+    try { d = JSON.parse(line); } catch { continue; }
+    if (d.type !== 'assistant' || d.isSidechain) continue;
+    assistant += 1;
+    const u = d.message && d.message.usage;
+    if (!u || typeof u !== 'object') continue;
     const total = usageTotal(u);
-    if (!(total > 0)) return;
+    if (!(total > 0)) continue;
     if (first === null) first = total;
     last = total;
-  });
-  if (!readable) return { ok: false, reason: 'unreadable' };
-  if (last === null) return { ok: false, reason: 'no-usage' };
-  return { ok: true, ctx: last, floor: first };
+  }
+  return { first, last, assistant };
+}
+
+// reason 'not-yet': the transcript has no assistant lines at all (turn one) — not measurable yet.
+// reason 'no-usage': assistant lines exist but none carry usage — unrecognised format.
+// opts.needFloor false: only the latest usage is needed, so a bounded tail read suffices.
+function measureContext(transcriptPath, opts = {}) {
+  const needFloor = opts.needFloor !== false;
+  if (!needFloor) {
+    const tail = readTail(transcriptPath, TAIL_BYTES);
+    if (tail === null) return { ok: false, reason: 'unreadable' };
+    const t = scanUsage(tail.text);
+    if (t.last !== null) return { ok: true, ctx: t.last, floor: null };
+    if (!tail.partial) return { ok: false, reason: t.assistant > 0 ? 'no-usage' : 'not-yet' };
+    // tail held no usage line: fall through to the full read
+  }
+  let text;
+  try { text = fs.readFileSync(transcriptPath, 'utf8'); } catch { return { ok: false, reason: 'unreadable' }; }
+  const s = scanUsage(text);
+  if (s.last === null) return { ok: false, reason: s.assistant > 0 ? 'no-usage' : 'not-yet' };
+  return { ok: true, ctx: s.last, floor: s.first };
 }
 
 function sumOutputTokens(transcriptPath) {

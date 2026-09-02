@@ -27,6 +27,45 @@ test('measureContext reports no-usage when nothing usable', () => {
   assert.deepEqual(lib.measureContext(path.join(T, 'missing.jsonl')), { ok: false, reason: 'unreadable' });
 });
 
+test('measureContext reports not-yet when the transcript has no assistant lines', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = writeTranscript(T, []);
+  assert.deepEqual(lib.measureContext(tp), { ok: false, reason: 'not-yet' });
+});
+
+// One filler line of ~64 KB; six of them clear the 256 KB tail window.
+function filler(n) {
+  const line = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(65000) } });
+  return new Array(n).fill(line);
+}
+function usageLine(total) {
+  return JSON.stringify({
+    type: 'assistant',
+    message: { role: 'assistant', usage: { input_tokens: 10, cache_read_input_tokens: total - 10, cache_creation_input_tokens: 0, output_tokens: 5 } },
+  });
+}
+
+test('measureContext tail-reads: usage line beyond 256 KB of earlier content is found without a full read', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = path.join(T, 'big.jsonl');
+  fs.writeFileSync(tp, [usageLine(1000), ...filler(6), usageLine(7777)].join('\n') + '\n');
+  assert.ok(fs.statSync(tp).size > 262144, 'fixture must exceed the tail window');
+  assert.deepEqual(lib.measureContext(tp, { needFloor: false }), { ok: true, ctx: 7777, floor: null });
+});
+
+test('measureContext falls back to a full read when the only usage line is beyond the tail', () => {
+  const T = tmp();
+  const lib = loadLib(T);
+  const tp = path.join(T, 'headonly.jsonl');
+  fs.writeFileSync(tp, [usageLine(4242), ...filler(6)].join('\n') + '\n');
+  assert.ok(fs.statSync(tp).size > 262144, 'fixture must exceed the tail window');
+  const m = lib.measureContext(tp, { needFloor: false });
+  assert.equal(m.ok, true);
+  assert.equal(m.ctx, 4242);
+});
+
 test('sumOutputTokens adds output tokens across assistant lines', () => {
   const T = tmp();
   const lib = loadLib(T);
