@@ -13,7 +13,7 @@ function hardSession() {
   runHook('ctx-meter.js', meter, env); // puts the session in hard state
   const guard = (tool_name, file_path) => runHook('ctx-guard.js',
     { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PreToolUse', tool_name, tool_input: { file_path } }, env);
-  return { T, tp, env, meter, guard, hp: path.join(T, 'memory', 'handoff.md') };
+  return { T, tp, env, sid, meter, guard, hp: path.join(T, 'memory', 'handoff.md') };
 }
 
 test('denies Edit outside the memory dir in hard state, with the handoff path in the reason', () => {
@@ -50,6 +50,19 @@ test('allows in soft and ok states, and for subagents', () => {
   const sub = runHook('ctx-guard.js', { session_id: 'x', agent_id: 'sub', transcript_path: tp, hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: path.join(T, 'a.js') } }, env);
   assert.equal(sub.out, null);
   assert.equal(typeof guard, 'function');
+});
+
+test('resolves a relative file_path against input.cwd, not the hook process cwd', () => {
+  const { guard } = hardSession();
+  assert.equal(guard('Write', 'memory/handoff.md').out, null);
+  const r = guard('Edit', 'src/app.js');
+  assert.equal(r.out.hookSpecificOutput.permissionDecision, 'deny');
+});
+
+test('ignores tools other than Edit|Write|MultiEdit|NotebookEdit', () => {
+  const { T, tp, env, sid } = hardSession();
+  const r = runHook('ctx-guard.js', { session_id: sid, transcript_path: tp, cwd: T, hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'ls' } }, env);
+  assert.equal(r.out, null);
 });
 
 test('fails open when state is missing', () => {

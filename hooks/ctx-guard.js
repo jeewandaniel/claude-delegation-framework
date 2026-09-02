@@ -13,6 +13,7 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   let input;
   try { input = JSON.parse(raw); } catch { return; }
   if (lib.isSubagent(input)) return;
+  if (!/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(input.tool_name || '')) return;
   const session = lib.safeSession(input.session_id);
   if (!session || !input.transcript_path) return;
 
@@ -23,7 +24,7 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   const target = ti.file_path || ti.notebook_path || '';
   const memDir = lib.memoryDir(input.transcript_path);
   if (target) {
-    const rel = path.relative(memDir, path.resolve(target));
+    const rel = path.relative(memDir, path.resolve(input.cwd || process.cwd(), target));
     const inMemory = rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
     if (inMemory) return;
   }
