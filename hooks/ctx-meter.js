@@ -20,7 +20,17 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
   const st = lib.readState(session);
   const msgs = [];
 
-  const m = input.transcript_path ? lib.measureContext(input.transcript_path) : { ok: false, reason: 'no-transcript' };
+  if (!input.transcript_path) {
+    if (!st.unavailableReported) {
+      st.unavailableReported = true;
+      msgs.push('Context meter unavailable in this session (transcript usage not found). Treat context size as unknown and run /handoff early rather than late.');
+    }
+    lib.writeState(session, st);
+    if (msgs.length) lib.emit(event, msgs.join('\n'));
+    return;
+  }
+
+  const m = lib.measureContext(input.transcript_path);
   let ctx = null;
   if (m.ok) {
     ctx = m.ctx;
@@ -46,7 +56,7 @@ const stdinTimeout = setTimeout(() => process.exit(0), 10000);
     msgs.push(`Session floor: ${lib.k(st.floor)} tokens of context before the first message.`);
   }
 
-  const hp = input.transcript_path ? lib.handoffPath(input.transcript_path) : null;
+  const hp = lib.handoffPath(input.transcript_path);
 
   // Handoff written this call?
   if (event === 'PostToolUse' && hp && /^(Write|Edit|MultiEdit)$/.test(input.tool_name || '')

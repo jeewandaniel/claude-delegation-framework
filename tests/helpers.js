@@ -37,7 +37,7 @@ function writeTranscript(dir, totals, opts = {}) {
 
 function runHook(name, input, env = {}) {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'hooks', name)], {
-    input: JSON.stringify(input),
+    input: typeof input === 'string' ? input : JSON.stringify(input),
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });

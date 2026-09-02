@@ -74,6 +74,22 @@ test('transcript without usage: unavailable notice once', () => {
   assert.equal(runHook('ctx-meter.js', base, env).out, null);
 });
 
+test('missing transcript_path is unavailable even with a bridge file present (no "null" in message)', () => {
+  const T = tmp();
+  const env = { FRAMEWORK_HOME: T, TMPDIR: T };
+  const session = 'm-' + path.basename(T);
+  const base = { session_id: session, cwd: T, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: {} };
+  require('fs').writeFileSync(
+    path.join(T, `claude-ctx-${session}.json`),
+    JSON.stringify({ remaining_percentage: 5, context_window_size: 200000 })
+  );
+  const r1 = runHook('ctx-meter.js', base, env);
+  const msg = ctxOf(r1.out);
+  assert.match(msg, /Context meter unavailable/);
+  assert.ok(!msg.includes('null'), 'message must not contain "null"');
+  assert.equal(runHook('ctx-meter.js', base, env).out, null);
+});
+
 test('garbage stdin exits 0 silently', () => {
   const T = tmp();
   const r = runHook('ctx-meter.js', 'not json', { FRAMEWORK_HOME: T, TMPDIR: T });
