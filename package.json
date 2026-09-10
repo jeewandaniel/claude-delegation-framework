@@ -1,7 +1,7 @@
 {
   "name": "claude-delegation-framework",
   "private": true,
-  "description": "Global Claude Code framework: model delegation ladder, evidence rules, subagent ledger, manual /handoff, optional context-hygiene module",
+  "description": "Global Claude Code framework: model delegation ladder, evidence rules, subagent ledger, manual /handoff, optional context-hygiene module; installable as a script or as the delegation and context-hygiene plugins",
   "scripts": {
     "test": "node --test tests/*.test.js modules/*/tests/*.test.js"
   }

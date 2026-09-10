@@ -30,6 +30,40 @@ sessions. Details and settings: `modules/context-hygiene/README.md`.
 
 ## Install
 
+Two paths. The plugin is the quick one; the script is the complete one.
+
+### Path A — Plugin (two commands)
+
+```
+/plugin marketplace add jeewandaniel/claude-cost-framework
+/plugin install delegation@claude-cost-framework
+/plugin install context-hygiene@claude-cost-framework    # optional, see above
+```
+
+`delegation` asks for one thing on install: the name Claude should call you. It brings the six
+agents, the `/handoff` skill and the ledger.
+
+Three things the plugin cannot do, because Claude Code does not let a plugin do them:
+
+1. **It cannot write the rules into `~/.claude/CLAUDE.md`.** A `CLAUDE.md` inside a plugin is
+   ignored. Instead a `SessionStart` hook reads the block to Claude as session context on
+   `startup`, `resume`, `clear` and `compact`. That is one injection per session rather than a
+   file the model re-reads, so it is a weaker attachment than the CLAUDE.md block.
+2. **It cannot set your model or connector settings.** Plugin settings accept only `agent` and
+   `subagentStatusLine`; `model`, `autoCompactWindow` and `disableClaudeAiConnectors` are
+   dropped. Set the model yourself with `/model`, and add `disableClaudeAiConnectors` to your
+   own `settings.json` if you want it.
+3. **It cannot run the full onboarding.** The only install-time prompt a plugin gets is the
+   typed `userConfig` above, so questions 2-6 in the table below have no plugin equivalent —
+   context hygiene becomes "install the second plugin or don't", the ledger is always on, and
+   scope is handled natively (`--scope user`, or `enabledPlugins` in a project's
+   `.claude/settings.json`).
+
+Marketplace and plugin manifests live in `.claude-plugin/` and `plugins/`. They are generated
+from the same sources as the script install; `bin/sync-plugins.sh` regenerates them.
+
+### Path B — Script (full install)
+
 ```bash
 ./install.sh
 ```
