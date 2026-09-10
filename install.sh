@@ -105,7 +105,10 @@ NAME="$F_NAME"
 [ -n "$NAME" ] || NAME="${FRAMEWORK_NAME:-}"
 [ -n "$NAME" ] || NAME="$(prior name)"
 if [ -z "$NAME" ]; then
-  DEFAULT_NAME="$(git config user.name 2>/dev/null | awk '{print $1}')"
+  # `|| true` keeps `set -o pipefail` from handing git's exit status to `set -e`: with no readable
+  # user.name the pipeline fails even though awk succeeds, which would abort the run before the
+  # fallback below. Absent git, absent config and an empty name all land on "you".
+  DEFAULT_NAME="$(git config user.name 2>/dev/null | awk '{print $1}' || true)"
   [ -n "$DEFAULT_NAME" ] || DEFAULT_NAME="you"
   NAME="$(ask "What should Claude call you? [$DEFAULT_NAME]")"
   [ -n "$NAME" ] || NAME="$DEFAULT_NAME"
@@ -164,6 +167,7 @@ else
 fi
 SETTINGS="$DEST/settings.json"
 INSTALL_JSON="$DEST/framework/install.json"
+BACKUP_DIR="$DEST/framework/backups"
 MARKER="$DEST/framework/context-hygiene.on"
 
 # ---------------------------------------------------------------- uninstall
@@ -186,6 +190,16 @@ if [ "$UNINSTALL" -eq 1 ]; then
       # keys are bare identifiers, so splitting on whitespace is safe here
       # shellcheck disable=SC2086
       "$NODE" "$REPO/bin/set-key.js" --delete "$SETTINGS" $U_KEYS
+    fi
+    U_PREV="$(read_record previous)"
+    if [ -n "$U_PREV" ]; then
+      while IFS= read -r k; do
+        [ -n "$k" ] || continue
+        v="$(read_record "previous.$k")"
+        if [ -n "$v" ]; then "$NODE" "$REPO/bin/set-key.js" "$SETTINGS" "$k" "$v" >/dev/null; fi
+      done <<UNINSTALL_PREV
+$U_PREV
+UNINSTALL_PREV
     fi
     if [ "$U_MADE_SETTINGS" = true ]; then rm -f "$SETTINGS"; fi
   fi
@@ -211,6 +225,7 @@ UNINSTALL_FILES
     rmdir "$d" 2>/dev/null || true
   done
   echo "Uninstalled the delegation framework from $DEST"
+  if [ -d "$BACKUP_DIR" ]; then echo "Backups kept in: $BACKUP_DIR"; fi
   exit 0
 fi
 
@@ -262,15 +277,50 @@ if ! "$NODE" -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
   echo "$SETTINGS is not valid JSON; refusing to touch it" >&2
   exit 1
 fi
-BAK="$SETTINGS.bak-$(date +%Y%m%d-%H%M%S)-$$"
+# Backups live inside the framework directory, never beside settings.json, so --uninstall knows
+# where they are and can leave them there. Names sort chronologically; only the 5 newest are kept.
+mkdir -p "$BACKUP_DIR"
+BAK="$BACKUP_DIR/settings.json.$(date +%Y%m%d-%H%M%S)"
+bak_n=1
+while [ -e "$BAK" ]; do
+  BAK="$BACKUP_DIR/settings.json.$(date +%Y%m%d-%H%M%S)-$(printf '%02d' "$bak_n")"
+  bak_n=$((bak_n + 1))
+done
 cp "$SETTINGS" "$BAK"
+BAK_COUNT="$(ls -1 "$BACKUP_DIR" | wc -l | tr -d ' ')"
+if [ "$BAK_COUNT" -gt 5 ]; then
+  ls -1 "$BACKUP_DIR" | sort | sed -n "1,$((BAK_COUNT - 5))p" | while IFS= read -r old; do
+    rm -f "$BACKUP_DIR/$old"
+  done
+fi
 
-# Only keys this run actually adds are recorded, so a key the user already had is never removed.
+# Keys this run adds go in ADDED_KEYS, so --uninstall deletes them; the value a key the user
+# already had is passed to install.json, which keeps the first one it is told and so survives
+# re-runs. Between them, --uninstall can undo every settings.json key this installer writes.
 ADDED_KEYS=()
+PREV_KEYS=()
 set_key() {  # set_key <key> <json value>
-  if [ "$("$NODE" "$REPO/bin/set-key.js" "$SETTINGS" "$1" "$2")" = added ]; then
-    ADDED_KEYS+=("$1")
+  local out
+  out="$("$NODE" "$REPO/bin/set-key.js" "$SETTINGS" "$1" "$2")"
+  case "$out" in
+    added) ADDED_KEYS+=("$1") ;;
+    'updated '*) PREV_KEYS+=("$1=${out#updated }") ;;
+  esac
+}
+recorded() {  # recorded <key>: what a previous run into this DEST wrote, or nothing
+  [ -f "$INSTALL_JSON" ] || return 0
+  "$NODE" "$REPO/bin/install-json.js" get "$INSTALL_JSON" "$1" 2>/dev/null || true
+}
+unset_key() {  # unset_key <key>: undo a key this installer set, and only such a key
+  local prev
+  prev="$(recorded "previous.$1")"
+  if [ -n "$prev" ]; then
+    "$NODE" "$REPO/bin/set-key.js" "$SETTINGS" "$1" "$prev" >/dev/null
+    return 0
   fi
+  case " $(recorded settingsKeys | tr '\n' ' ') " in
+    *" $1 "*) "$NODE" "$REPO/bin/set-key.js" --delete "$SETTINGS" "$1" ;;
+  esac
 }
 if [ "$LEDGER" = on ]; then
   "$NODE" "$REPO/bin/merge-settings.js" "$SETTINGS" "$REPO/settings/settings.patch.json" "$DEST/hooks" "$NODE"
@@ -282,6 +332,7 @@ if [ "$CTX_MODE" = on ]; then
   set_key autoCompactWindow 220000
 else
   "$NODE" "$REPO/bin/merge-settings.js" --remove "$SETTINGS" "$MODULE/settings.patch.json" "$DEST/hooks" "$NODE"
+  unset_key autoCompactWindow
 fi
 if [ "$MODEL" != keep ]; then set_key model "\"$MODEL\""; fi
 if [ "$CONN" = on ]; then set_key disableClaudeAiConnectors true; fi
@@ -303,7 +354,8 @@ fi
   "createdSettings=$([ "$HAD_SETTINGS" = false ] && echo true || echo false)" \
   "createdClaudeMd=$([ "$HAD_CLAUDE_MD" = false ] && echo true || echo false)" \
   "createdFrameworkJson=$([ "$HAD_FRAMEWORK_JSON" = false ] && echo true || echo false)" \
-  --keys ${ADDED_KEYS[@]+"${ADDED_KEYS[@]}"} --files ${FILES[@]+"${FILES[@]}"}
+  --keys ${ADDED_KEYS[@]+"${ADDED_KEYS[@]}"} --files ${FILES[@]+"${FILES[@]}"} \
+  --previous ${PREV_KEYS[@]+"${PREV_KEYS[@]}"}
 
 echo "Installed delegation framework into $DEST"
 echo "Name: $NAME. Model: $MODEL. Ledger: $LEDGER. Scope: $SCOPE. Connectors: $(if [ "$CONN" = on ]; then echo "off in Claude Code"; else echo untouched; fi)."

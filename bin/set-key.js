@@ -2,8 +2,9 @@
 'use strict';
 // Usage: set-key.js <json file> <key> <json value>
 //        set-key.js --delete <json file> <key>...
-// Sets one top-level key, printing "added" if the key was absent and "updated" if it was already
-// there, so the installer can record which settings keys are its own. --delete removes keys again.
+// Sets one top-level key, printing "added" if the key was absent and `updated <json>` -- the value
+// the key held -- if it was already there, so the installer can record which settings keys are its
+// own and what it overwrote. --delete removes keys again.
 const fs = require('fs');
 
 const argv = process.argv.slice(2);
@@ -26,6 +27,7 @@ if (!file || !key || raw === undefined) {
 }
 const obj = JSON.parse(fs.readFileSync(file, 'utf8'));
 const had = Object.prototype.hasOwnProperty.call(obj, key);
+const before = obj[key];
 obj[key] = JSON.parse(raw);
 fs.writeFileSync(file, JSON.stringify(obj, null, 2) + '\n');
-process.stdout.write(had ? 'updated' : 'added');
+process.stdout.write(had ? `updated ${JSON.stringify(before)}` : 'added');

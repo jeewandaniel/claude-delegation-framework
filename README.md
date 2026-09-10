@@ -35,7 +35,8 @@ sessions. Details and settings: `modules/context-hygiene/README.md`.
 ```
 
 It asks six questions, then copies `hooks/ledger.js` plus `hooks/lib/`, the six agents and the
-handoff skill into `~/.claude`, merges settings (a backup is written first), and puts the block
+handoff skill into `~/.claude`, merges settings (a timestamped backup of `settings.json` goes to
+`~/.claude/framework/backups/` first, and only the five newest are kept), and puts the block
 between `<!-- framework:start -->` and `<!-- framework:end -->` in `~/.claude/CLAUDE.md`.
 
 A question is asked only when you are at a terminal and you did not already answer it with a flag
@@ -67,7 +68,9 @@ Re-run after any change here, then restart Claude Code. A re-run reads
 
 `./install.sh --uninstall` removes the files and the settings keys recorded in
 `~/.claude/framework/install.json` and takes the block back out of `CLAUDE.md`, leaving every other
-setting, file and `settings.json` backup exactly as it is.
+setting and file exactly as it is. A settings key the installer *overwrote* is put back to the value
+it had before the first install; one the installer *added* is deleted. `~/.claude/framework/backups/`
+is printed and left in place, so the `settings.json` backups outlive the uninstall.
 
 ## Per project
 
@@ -93,7 +96,7 @@ bin/measure.sh --bare     # user settings off too
 4. The CLAUDE.md block between the markers matches `claude-md/framework-block.md`.
 5. In a real session, dispatch any subagent, then run `bin/ledger.sh` and expect one row for that agent type.
 6. `FRAMEWORK_HOME=/tmp/fw-home ./install.sh --with-context-hygiene` adds `ctx-meter.js`, `ctx-guard.js`, `read-warn.js` and `handoff-load.js`; `--without-context-hygiene` takes `/tmp/fw-home` back to the state of step 2.
-7. `FRAMEWORK_HOME=/tmp/fw-home ./install.sh --uninstall` leaves `/tmp/fw-home` with nothing but the `settings.json.bak-*` files.
+7. `FRAMEWORK_HOME=/tmp/fw-home ./install.sh --uninstall` leaves `/tmp/fw-home` with nothing but `framework/backups/`, whose path it prints.
 
 ## Known limits
 

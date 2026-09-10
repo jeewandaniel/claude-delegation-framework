@@ -49,7 +49,7 @@ test('installs files, merges settings, preserves existing hooks and CLAUDE.md, a
   assert.deepEqual(commandsFor(s1, 'PostToolUse'), ['node /gsd/context-monitor.js'], 'no framework hook added to PostToolUse');
   const start = commandsFor(s1, 'SubagentStart')[0];
   assert.ok(start.startsWith(`"${process.execPath}"`) || start.includes('node'), 'absolute node path used');
-  assert.ok(fs.readdirSync(T).some((f) => f.startsWith('settings.json.bak-')), 'backup written');
+  assert.equal(fs.readdirSync(path.join(T, 'framework', 'backups')).length, 1, 'backup written');
 
   const md1 = fs.readFileSync(path.join(T, 'CLAUDE.md'), 'utf8');
   assert.ok(md1.startsWith('# My global rules'), 'existing content kept');
@@ -323,11 +323,12 @@ test('--uninstall returns settings.json and CLAUDE.md to their pre-install bytes
   assert.equal(un.status, 0, un.stderr);
   assert.equal(fs.readFileSync(path.join(T, 'settings.json'), 'utf8'), settingsBefore, 'settings.json byte-identical');
   assert.equal(fs.readFileSync(path.join(T, 'CLAUDE.md'), 'utf8'), mdBefore, 'CLAUDE.md byte-identical');
-  for (const gone of ['hooks', 'agents', 'skills', 'framework.json', 'framework']) {
+  assert.match(un.stdout, /Backups kept in: /);
+  for (const gone of ['hooks', 'agents', 'skills', 'framework.json']) {
     assert.ok(!fs.existsSync(path.join(T, gone)), `${gone} removed`);
   }
-  const left = fs.readdirSync(T).filter((f) => !f.startsWith('settings.json.bak-'));
-  assert.deepEqual(left.sort(), ['CLAUDE.md', 'settings.json'], 'only the user files and the backups remain');
+  assert.deepEqual(fs.readdirSync(path.join(T, 'framework')), ['backups'], 'the backups are all that is left of framework/');
+  assert.deepEqual(fs.readdirSync(T).sort(), ['CLAUDE.md', 'framework', 'settings.json'], 'only the user files and the backups remain');
 });
 
 test('--uninstall on a directory with no record says so and changes nothing', () => {
@@ -343,4 +344,59 @@ test('--uninstall of a created install removes the files it created', () => {
   assert.equal(install(T, ['--uninstall']).status, 0);
   assert.ok(!fs.existsSync(path.join(T, 'settings.json')), 'a settings.json the installer created is removed');
   assert.ok(!fs.existsSync(path.join(T, 'CLAUDE.md')), 'a CLAUDE.md the installer created is removed');
+});
+
+// ---------------------------------------------------------------- regressions
+// A fully isolated run: no FRAMEWORK_NAME, no git identity to fall back on, HOME inside the
+// scratch dir. `env` replaces the environment wholesale, so this is the `env -i` case.
+function installBare(T, args = [], env = {}) {
+  return spawnSync('bash', [path.join(ROOT, 'install.sh'), ...args], {
+    cwd: T,
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH, HOME: T, FRAMEWORK_HOME: T, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null', ...env },
+  });
+}
+
+test('a missing git user.name falls back to "you" instead of aborting the run', () => {
+  const T = tmp();
+  const r = installBare(T, ['--yes']);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.match(r.stdout, /Name: you\./);
+  assert.ok(fs.readFileSync(path.join(T, 'CLAUDE.md'), 'utf8').includes('understand you, route work'));
+});
+
+test('--uninstall restores a settings key the installer overwrote', () => {
+  const T = tmp();
+  fs.writeFileSync(path.join(T, 'settings.json'), JSON.stringify({ model: 'opus[1m]' }, null, 2) + '\n');
+  assert.equal(install(T, ['--yes']).status, 0);
+  assert.equal(settingsOf(T).model, 'sonnet', 'sanity: the installer overwrote it');
+  const rec = () => JSON.parse(fs.readFileSync(path.join(T, 'framework', 'install.json'), 'utf8'));
+  assert.equal(rec().previous.model, '"opus[1m]"', 'the original value is recorded');
+
+  assert.equal(install(T, ['--yes']).status, 0);
+  assert.equal(rec().previous.model, '"opus[1m]"', 'a re-run must not record its own value as the original');
+
+  assert.equal(install(T, ['--uninstall']).status, 0);
+  assert.equal(settingsOf(T).model, 'opus[1m]', 'the user gets their model back');
+});
+
+test('--without-context-hygiene takes back the autoCompactWindow it added', () => {
+  const T = tmp();
+  assert.equal(install(T, ['--with-context-hygiene', '--yes']).status, 0);
+  assert.equal(settingsOf(T).autoCompactWindow, 220000, 'sanity: the module set it');
+  assert.equal(install(T, ['--without-context-hygiene', '--yes']).status, 0);
+  assert.equal(settingsOf(T).autoCompactWindow, undefined, 'not left stuck at 220000');
+});
+
+test('settings backups live under framework/backups, are pruned to five, and survive uninstall', () => {
+  const T = tmp();
+  const dir = path.join(T, 'framework', 'backups');
+  for (let i = 0; i < 3; i++) assert.equal(install(T, ['--yes']).status, 0);
+  assert.equal(fs.readdirSync(dir).length, 3, 'one backup per run');
+  for (let i = 0; i < 3; i++) assert.equal(install(T, ['--yes']).status, 0);
+  assert.equal(fs.readdirSync(dir).length, 5, 'pruned to the five newest');
+  assert.ok(!fs.readdirSync(T).some((f) => f.startsWith('settings.json.bak-')), 'nothing lands beside settings.json');
+
+  assert.equal(install(T, ['--uninstall']).status, 0);
+  assert.equal(fs.readdirSync(dir).length, 5, 'uninstall leaves the backups alone');
 });
