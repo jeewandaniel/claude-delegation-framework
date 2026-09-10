@@ -64,7 +64,9 @@ fi
 # ---------------------------------------------------------------- answers from a previous run
 PRIOR=""
 PRIOR_MARKER=""
-for candidate in "${FRAMEWORK_HOME:-}" "$PWD/.claude" "$HOME/.claude"; do
+# an explicit FRAMEWORK_HOME is the only place we look; otherwise the usual project-then-user order
+if [ -n "${FRAMEWORK_HOME:-}" ]; then candidates=("$FRAMEWORK_HOME"); else candidates=("$PWD/.claude" "$HOME/.claude"); fi
+for candidate in "${candidates[@]}"; do
   [ -n "$candidate" ] || continue
   if [ -z "$PRIOR" ] && [ -f "$candidate/framework/install.json" ]; then PRIOR="$candidate/framework/install.json"; fi
   # an install from before install.json existed records its mode in this marker only
