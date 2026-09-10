@@ -1,15 +1,15 @@
 ---
 name: handoff
-description: Write the session handoff file so a later session can pick the work up. Use only when Jeewan asks for a handoff or to wrap up. Writes handoff.md in the project's Claude memory directory and reports the path.
+description: Write the session handoff file so a later session can pick the work up. Use only on a request from {{NAME}} for a handoff or to wrap up. Writes handoff.md in the project's Claude memory directory and reports the path.
 ---
 
 # /handoff
 
-Goal: the next session, starting on an empty context, continues without asking Jeewan to repeat anything.
+Goal: the next session, starting on an empty context, continues without asking {{NAME}} to repeat anything.
 
 ## Steps
 
-1. Locate the memory directory. The system prompt names it ("persistent file-based memory at ..."). If Jeewan gave a path, use exactly that path. Create the directory if it is missing.
+1. Locate the memory directory. The system prompt names it ("persistent file-based memory at ..."). If {{NAME}} named a path, use exactly that path. Create the directory if it is missing.
 2. If `handoff.md` already exists there, rename it to `handoff-prev.md`, replacing any older `handoff-prev.md`.
 3. List every file you touched this session (edits, writes, commits) by scanning what you actually did, not from memory. Include paths outside the project if you touched them.
 4. Run the verification commands you are about to list (tests, build, curl) when they are cheap, and record their real output. If you did not run one, write "not run".
@@ -28,7 +28,7 @@ Goal: the next session, starting on an empty context, continues without asking J
 ## Next steps
 <exactly the next three actions, in order>
 ## Open questions
-<what needs Jeewan>
+<what needs {{NAME}}>
 ## Verify
 <commands and their last known result>
 ## Do not
@@ -36,7 +36,7 @@ Goal: the next session, starting on an empty context, continues without asking J
 ```
 
 6. If durable facts emerged this session (a preference, a project constraint, a reference URL), save each as its own memory file with a `MEMORY.md` index line, following the memory instructions in the system prompt. The handoff is for continuity; memory is for facts that outlive this task.
-7. Reply to Jeewan in exactly this shape and nothing more:
+7. Reply to {{NAME}} in exactly this shape and nothing more:
 
 ```
 Handoff saved: <path>
@@ -53,4 +53,4 @@ Handoff saved: <path>
 - Start no new work once the handoff begins.
 - Do not summarise from memory when the transcript has the facts.
 - Every decision line carries evidence or says "no evidence, judgment call".
-- If writing the file fails, report the exact error to Jeewan and stop; do not claim it was saved.
+- If writing the file fails, report the exact error to {{NAME}} and stop; do not claim it was saved.

@@ -36,8 +36,8 @@ It also swaps two pieces of text:
 ./install.sh --with-context-hygiene     # or: FRAMEWORK_CONTEXT_HYGIENE=1 ./install.sh
 ```
 
-Plain `./install.sh` re-runs keep whichever mode is already installed (a marker file,
-`~/.claude/framework/context-hygiene.on`, records it).
+Plain `./install.sh` re-runs keep whichever mode is already installed: the answer is recorded in
+`~/.claude/framework/install.json`, alongside a `~/.claude/framework/context-hygiene.on` marker.
 
 ## Turn it off
 

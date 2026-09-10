@@ -1,7 +1,4 @@
 {
-  "model": "sonnet",
-  "autoCompactWindow": 220000,
-  "disableClaudeAiConnectors": true,
   "hooks": {
     "SubagentStart": [
       { "hooks": [{ "type": "command", "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/ledger.js\"", "timeout": 5 }] }

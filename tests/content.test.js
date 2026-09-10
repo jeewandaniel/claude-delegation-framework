@@ -65,10 +65,29 @@ test('project templates are valid', () => {
 test('handoff skill has frontmatter and the reply shape', () => {
   const fm = frontmatter('skills/handoff/SKILL.md');
   assert.equal(fm.name, 'handoff');
-  assert.ok(fm.description.includes('Use only when Jeewan asks for a handoff or to wrap up.'), 'manual only');
+  assert.ok(fm.description.includes('Use only on a request from {{NAME}} for a handoff or to wrap up.'), 'manual only');
   const text = fs.readFileSync(path.join(ROOT, 'skills/handoff/SKILL.md'), 'utf8');
   assert.ok(text.includes('Handoff saved: <path>'));
   assert.ok(!/\/clear/.test(text), 'no /clear instruction');
   assert.ok(!/CONTEXT (soft|hard)/.test(text), 'no hook-driven triggers');
   for (const s of ['## Goal', '## State', '## Decisions', '## Files touched', '## Next steps', '## Open questions', '## Verify', '## Do not']) assert.ok(text.includes(s), s);
+});
+
+test('installed text carries the {{NAME}} placeholder and no hard-coded name', () => {
+  const files = ['claude-md/framework-block.md', 'skills/handoff/SKILL.md',
+    'modules/context-hygiene/context-rules.md', 'modules/context-hygiene/handoff-SKILL.md'];
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.ok(text.includes('{{NAME}}'), `${f} uses the placeholder`);
+    assert.ok(!text.includes('Jeewan'), `${f} names nobody`);
+    // "you" is the default substitution, so no verb may take a third-person -s after the name.
+    for (const m of text.match(/\{\{NAME\}\} \w+/g) || []) {
+      assert.ok(!/\{\{NAME\}\} \w+s$/.test(m) || /\{\{NAME\}\} (as|is)$/.test(m), `${f}: grammar breaks on "you" in "${m}"`);
+    }
+  }
+});
+
+test('the base settings patch carries hooks only; scalars follow the answers', () => {
+  const patch = JSON.parse(fs.readFileSync(path.join(ROOT, 'settings/settings.patch.json'), 'utf8'));
+  assert.deepEqual(Object.keys(patch), ['hooks'], 'model, autoCompactWindow and connectors are applied per answer');
 });

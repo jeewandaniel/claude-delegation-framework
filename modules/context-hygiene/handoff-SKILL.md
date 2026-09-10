@@ -1,11 +1,11 @@
 ---
 name: handoff
-description: Write the session handoff file so the session can be cleared without losing anything. Use when a hook message says CONTEXT soft or hard, when Jeewan asks to wrap up or pause, or before ending a long task. Writes handoff.md in the project's Claude memory directory, then tells Jeewan they can /clear.
+description: Write the session handoff file so the session can be cleared without losing anything. Use when a hook message says CONTEXT soft or hard, on a request from {{NAME}} to wrap up or pause, or before ending a long task. Writes handoff.md in the project's Claude memory directory, then tells {{NAME}} the session can be cleared.
 ---
 
 # /handoff
 
-Goal: the next session, starting on an empty context, continues without asking Jeewan to repeat anything.
+Goal: the next session, starting on an empty context, continues without asking {{NAME}} to repeat anything.
 
 ## Steps
 
@@ -28,7 +28,7 @@ Goal: the next session, starting on an empty context, continues without asking J
 ## Next steps
 <exactly the next three actions, in order>
 ## Open questions
-<what needs Jeewan>
+<what needs {{NAME}}>
 ## Verify
 <commands and their last known result>
 ## Do not
@@ -36,7 +36,7 @@ Goal: the next session, starting on an empty context, continues without asking J
 ```
 
 6. If durable facts emerged this session (a preference, a project constraint, a reference URL), save each as its own memory file with a `MEMORY.md` index line, following the memory instructions in the system prompt. The handoff is for continuity; memory is for facts that outlive this task.
-7. Reply to Jeewan in exactly this shape and nothing more:
+7. Reply to {{NAME}} in exactly this shape and nothing more:
 
 ```
 Handoff saved: <path>
@@ -54,4 +54,4 @@ You can /clear now. The next session will load this automatically.
 - Start no new work once the handoff begins.
 - Do not summarise from memory when the transcript has the facts.
 - Every decision line carries evidence or says "no evidence, judgment call".
-- If writing the file fails, report the exact error to Jeewan and stop; do not claim it was saved.
+- If writing the file fails, report the exact error to {{NAME}} and stop; do not claim it was saved.

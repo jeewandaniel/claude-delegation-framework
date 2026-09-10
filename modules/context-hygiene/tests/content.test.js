@@ -29,7 +29,7 @@ test('hooks require the lib by its installed path, since install copies them int
 
 test('settings patch carries only the four module hook entries and the placeholders', () => {
   const patch = json('settings.patch.json');
-  assert.deepEqual(Object.keys(patch), ['hooks'], 'no scalar keys: those belong to the base patch');
+  assert.deepEqual(Object.keys(patch), ['hooks'], 'no scalar keys: autoCompactWindow is applied by the installer');
   assert.deepEqual(Object.keys(patch.hooks).sort(), ['PostToolUse', 'PreToolUse', 'SessionStart', 'UserPromptSubmit']);
   const commands = Object.values(patch.hooks).flatMap((entries) => entries.flatMap((e) => e.hooks.map((h) => h.command)));
   assert.equal(commands.length, 5, 'ctx-meter runs on two events');
