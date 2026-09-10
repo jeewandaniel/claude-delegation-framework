@@ -1,0 +1,20 @@
+{
+  "name": "delegation",
+  "version": "1.0.0",
+  "description": "Delegation ladder: six subagents (scout, researcher, worker, builder, judge, decider), the escalation and evidence rules read in at session start, a /handoff skill, and a local ledger of subagent runs.",
+  "author": {
+    "name": "Jeewan",
+    "url": "https://github.com/jeewandaniel"
+  },
+  "repository": "https://github.com/jeewandaniel/claude-cost-framework",
+  "keywords": ["agents", "delegation", "handoff"],
+  "userConfig": {
+    "name": {
+      "type": "string",
+      "title": "Your first name",
+      "description": "Your first name, used in the delegation rules",
+      "default": "the user",
+      "sensitive": false
+    }
+  }
+}

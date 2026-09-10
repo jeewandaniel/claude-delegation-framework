@@ -1,0 +1,20 @@
+{
+  "name": "context-hygiene",
+  "version": "1.0.0",
+  "description": "Watches how full a session's context is: a meter, a guard that blocks edits until a handoff is written, a large-read warning, and a handoff loader at session start.",
+  "author": {
+    "name": "Jeewan",
+    "url": "https://github.com/jeewandaniel"
+  },
+  "repository": "https://github.com/jeewandaniel/claude-cost-framework",
+  "keywords": ["context", "handoff", "hooks"],
+  "userConfig": {
+    "name": {
+      "type": "string",
+      "title": "Your first name",
+      "description": "Your first name, used in the context rules",
+      "default": "the user",
+      "sensitive": false
+    }
+  }
+}

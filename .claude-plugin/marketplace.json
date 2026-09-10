@@ -1,0 +1,22 @@
+{
+  "name": "claude-cost-framework",
+  "owner": {
+    "name": "Jeewan",
+    "url": "https://github.com/jeewandaniel"
+  },
+  "description": "A model delegation ladder for Claude Code, plus an optional context-hygiene watcher.",
+  "plugins": [
+    {
+      "name": "delegation",
+      "source": "./plugins/delegation",
+      "description": "Delegation ladder: six subagents (scout, researcher, worker, builder, judge, decider), the escalation and evidence rules read in at session start, a /handoff skill, and a local ledger of subagent runs.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "context-hygiene",
+      "source": "./plugins/context-hygiene",
+      "description": "Watches how full a session's context is: a meter, a guard that blocks edits until a handoff is written, a large-read warning, and a handoff loader at session start.",
+      "version": "1.0.0"
+    }
+  ]
+}
