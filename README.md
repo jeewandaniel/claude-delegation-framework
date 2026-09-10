@@ -32,6 +32,11 @@ sessions. Details and settings: `modules/context-hygiene/README.md`.
 
 Two paths. The plugin is the quick one; the script is the complete one.
 
+**Pick one path.** Installing the plugin *and* running `install.sh` on the same machine registers
+the agent ledger twice (duplicate records) and reads the framework rules to Claude twice. Use the
+plugin, or the script — not both. To switch, `./install.sh --uninstall` first, or
+`/plugin uninstall delegation@claude-cost-framework`.
+
 ### Path A — Plugin (two commands)
 
 ```
@@ -39,6 +44,9 @@ Two paths. The plugin is the quick one; the script is the complete one.
 /plugin install delegation@claude-cost-framework
 /plugin install context-hygiene@claude-cost-framework    # optional, see above
 ```
+
+The GitHub repo `jeewandaniel/claude-cost-framework` is private today, so this path only works for
+people who have been given access to it; Path B below works from any local clone regardless.
 
 `delegation` asks for one thing on install: the name Claude should call you. It brings the six
 agents, the `/handoff` skill and the ledger.

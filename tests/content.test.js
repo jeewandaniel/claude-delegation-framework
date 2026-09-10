@@ -18,7 +18,10 @@ function frontmatter(file) {
 }
 
 test('only the ledger hook ships', () => {
-  assert.deepEqual(fs.readdirSync(path.join(ROOT, 'hooks')).sort(), ['ledger.js', 'lib']);
+  // run-node.sh is not a script-install hook: it is the canonical source that
+  // bin/sync-plugins.sh copies into both plugins' hooks/ dirs, so the plugins
+  // never invoke a bare `node` that a GUI app's minimal PATH might lack.
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, 'hooks')).sort(), ['ledger.js', 'lib', 'run-node.sh']);
   const patch = JSON.parse(fs.readFileSync(path.join(ROOT, 'settings/settings.patch.json'), 'utf8'));
   assert.deepEqual(Object.keys(patch.hooks).sort(), ['SubagentStart', 'SubagentStop']);
   const defaults = JSON.parse(fs.readFileSync(path.join(ROOT, 'settings/framework.defaults.json'), 'utf8'));

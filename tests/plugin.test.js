@@ -85,7 +85,7 @@ test('delegation registers the ledger on SubagentStart and SubagentStop', () => 
   for (const ev of ['SubagentStart', 'SubagentStop']) {
     const cmds = h.hooks[ev].flatMap((g) => g.hooks.map((x) => x.command));
     assert.equal(cmds.length, 1);
-    assert.match(cmds[0], /hooks\/ledger\.js/);
+    assert.match(cmds[0], /run-node\.sh"\s+ledger\.js/);
     assert.equal(h.hooks[ev][0].hooks[0].timeout, 5);
   }
 });
@@ -219,4 +219,59 @@ test('the context-hygiene hooks work on built-in defaults with no framework.json
     assert.equal(cfg[k], v, `${k} does not fall back to the shipped default`);
   }
   assert.equal(cfg.ledger, true);
+});
+
+test('both hooks.json files invoke every hook through run-node.sh, never a bare node', () => {
+  for (const name of PLUGINS) {
+    const h = readJson('plugins', name, 'hooks', 'hooks.json');
+    const cmds = Object.values(h.hooks).flat().flatMap((g) => g.hooks.map((x) => x.command));
+    assert.ok(cmds.length > 0);
+    for (const cmd of cmds) {
+      assert.match(cmd, /^sh "\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/run-node\.sh" \S+\.js$/, `${name}: ${cmd}`);
+    }
+    assert.ok(fs.existsSync(path.join(ROOT, 'plugins', name, 'hooks', 'run-node.sh')));
+    const mode = fs.statSync(path.join(ROOT, 'plugins', name, 'hooks', 'run-node.sh')).mode;
+    assert.ok(mode & 0o111, `${name}: run-node.sh is not executable`);
+  }
+});
+
+function runNode(plugin, script, env, stdin = '{}') {
+  const wrapper = path.join(ROOT, 'plugins', plugin, 'hooks', 'run-node.sh');
+  return spawnSync('/bin/sh', [wrapper, script], {
+    input: stdin,
+    encoding: 'utf8',
+    env,
+  });
+}
+
+test('run-node.sh picks up a version-manager node shim when PATH is empty', () => {
+  const T = tmp();
+  fs.mkdirSync(path.join(T, '.volta', 'bin'), { recursive: true });
+  const shim = path.join(T, '.volta', 'bin', 'node');
+  fs.writeFileSync(shim, '#!/bin/sh\necho "SHIM CALLED WITH: $@"\n');
+  fs.chmodSync(shim, 0o755);
+
+  const r = runNode('delegation', 'session-start.js', {
+    HOME: T,
+    PATH: '',
+    // Point the two OS-global fallback paths somewhere that cannot exist,
+    // so only the $HOME/.volta shim can be found — deterministic regardless
+    // of whether this machine has a real node at one of those locations.
+    RUN_NODE_HOMEBREW_PATH: path.join(T, 'no-such-homebrew-node'),
+    RUN_NODE_USRLOCAL_PATH: path.join(T, 'no-such-usrlocal-node'),
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /SHIM CALLED WITH: .*session-start\.js/);
+});
+
+test('run-node.sh exits 0 with empty stdout when no node can be found anywhere', () => {
+  const T = tmp();
+  const r = runNode('delegation', 'session-start.js', {
+    HOME: T,
+    PATH: '',
+    RUN_NODE_HOMEBREW_PATH: path.join(T, 'no-such-homebrew-node'),
+    RUN_NODE_USRLOCAL_PATH: path.join(T, 'no-such-usrlocal-node'),
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '');
 });
