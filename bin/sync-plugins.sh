@@ -41,8 +41,8 @@ cp "$ROOT/modules/context-hygiene/context-rules.md" "$CTX/context-rules.md"
 
 # 6. node-resolving shell wrapper, so hooks.json never invokes a bare `node`
 #    that a GUI-launched app's minimal PATH might not contain.
-cp "$ROOT/hooks/run-node.sh" "$DEL/hooks/run-node.sh"
-cp "$ROOT/hooks/run-node.sh" "$CTX/hooks/run-node.sh"
+cp "$ROOT/bin/run-node.sh" "$DEL/hooks/run-node.sh"
+cp "$ROOT/bin/run-node.sh" "$CTX/hooks/run-node.sh"
 chmod +x "$DEL/hooks/run-node.sh" "$CTX/hooks/run-node.sh"
 
 echo "synced plugins/ from canonical sources"
