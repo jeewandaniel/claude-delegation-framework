@@ -6,9 +6,27 @@ Global Claude Code setup for model delegation. Three pieces:
 2. **Ledger.** `hooks/ledger.js` runs on SubagentStart and SubagentStop and appends one JSON record per event to `~/.claude/framework/ledger/<YYYY-MM-DD>.jsonl` (agent type, model, duration, and the subagent's own context and output tokens). `bin/ledger.sh` summarises a day. Nothing else hooks into a session.
 3. **MCP scoping.** Account connectors off globally, back on per project with `templates/project/.claude/settings.json`.
 
-`/handoff` (`skills/handoff/SKILL.md`) is a manual skill: it runs only when Jeewan asks for a handoff. No hook triggers it, and nothing meters or blocks on context size — long sessions are left to Claude Code's own compaction.
+`/handoff` (`skills/handoff/SKILL.md`) is a manual skill: it runs only when Jeewan asks for a handoff. By default no hook triggers it, and nothing meters or blocks on context size — long sessions are left to Claude Code's own compaction. The optional module below changes that.
 
 Design (historical, describes the original context-hygiene version): `docs/superpowers/specs/2026-09-02-cost-framework-design.md`.
+
+## Optional: context hygiene
+
+Off by default. `modules/context-hygiene/` keeps the four hooks that watch a session's context
+size: a meter that reports how full the context is and tells the session to run `/handoff` past a
+soft and a hard threshold, a guard that refuses file edits in the hard state until the handoff is
+written, a warning when the main loop reads a large file itself, and a loader that injects the
+project's `handoff.md` at session start. Turning it on also swaps in the `## Context rules`
+section and the handoff skill that go with those messages.
+
+```bash
+./install.sh --with-context-hygiene      # on  (same as FRAMEWORK_CONTEXT_HYGIENE=1 ./install.sh)
+./install.sh --without-context-hygiene   # off, back to the default install
+```
+
+It interrupts work: past the thresholds the session is told to stop starting new work, and edits
+are blocked until a handoff file exists. That makes it unsuitable for unattended or overnight
+sessions. Details and settings: `modules/context-hygiene/README.md`.
 
 ## Install / update
 
@@ -16,7 +34,7 @@ Design (historical, describes the original context-hygiene version): `docs/super
 ./install.sh
 ```
 
-Copies `hooks/ledger.js` plus `hooks/lib/`, the six agents and the handoff skill into `~/.claude`, merges settings (backup written first), and replaces the block between `<!-- framework:start -->` and `<!-- framework:end -->` in `~/.claude/CLAUDE.md`. Re-run after any change here. Restart Claude Code afterwards.
+Copies `hooks/ledger.js` plus `hooks/lib/`, the six agents and the handoff skill into `~/.claude`, merges settings (backup written first), and replaces the block between `<!-- framework:start -->` and `<!-- framework:end -->` in `~/.claude/CLAUDE.md`. Re-run after any change here. Restart Claude Code afterwards. A plain re-run keeps whichever context-hygiene mode is already installed; the flags above change it.
 
 `FRAMEWORK_HOME=/some/dir ./install.sh` installs into a scratch directory instead, for testing.
 
@@ -43,6 +61,7 @@ bin/measure.sh --bare     # user settings off too
 3. `/tmp/fw-home/settings.json` has exactly two framework hooks, SubagentStart and SubagentStop, both `ledger.js`.
 4. The CLAUDE.md block between the markers matches `claude-md/framework-block.md`.
 5. In a real session, dispatch any subagent, then run `bin/ledger.sh` and expect one row for that agent type.
+6. `FRAMEWORK_HOME=/tmp/fw-home ./install.sh --with-context-hygiene` adds `ctx-meter.js`, `ctx-guard.js`, `read-warn.js` and `handoff-load.js`; `--without-context-hygiene` takes `/tmp/fw-home` back to the state of step 2.
 
 ## Known limits
 

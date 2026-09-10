@@ -1,0 +1,9 @@
+{
+  "softThreshold": 150000,
+  "hardThreshold": 190000,
+  "softRemindEvery": 8,
+  "hardRemindEvery": 3,
+  "handoffStaleTokens": 20000,
+  "readWarnLines": 300,
+  "readWarnEvery": 5
+}
