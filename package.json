@@ -1,7 +1,7 @@
 {
-  "name": "claude-cost-framework",
+  "name": "claude-delegation-framework",
   "private": true,
-  "description": "Global Claude Code framework: context hygiene, model routing, MCP scoping",
+  "description": "Global Claude Code framework: model delegation ladder, evidence rules, subagent ledger, manual /handoff",
   "scripts": {
     "test": "node --test tests/*.test.js"
   }

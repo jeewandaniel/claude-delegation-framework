@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the cost framework into a Claude Code config directory (default ~/.claude).
+# Install the delegation framework into a Claude Code config directory (default ~/.claude).
 # Idempotent: safe to re-run after every change to this repo.
 set -euo pipefail
 
@@ -13,7 +13,7 @@ fi
 
 mkdir -p "$DEST/hooks/lib" "$DEST/agents" "$DEST/skills/handoff" "$DEST/framework/ledger"
 
-cp "$REPO"/hooks/*.js "$DEST/hooks/"
+cp "$REPO/hooks/ledger.js" "$DEST/hooks/"
 cp "$REPO"/hooks/lib/*.js "$DEST/hooks/lib/"
 cp "$REPO"/agents/*.md "$DEST/agents/"
 cp "$REPO"/skills/handoff/SKILL.md "$DEST/skills/handoff/SKILL.md"
@@ -38,6 +38,6 @@ cp "$SETTINGS" "$BAK"
 CLAUDE_MD="$DEST/CLAUDE.md"
 "$NODE" "$REPO/bin/install-claude-md.js" "$CLAUDE_MD" "$REPO/claude-md/framework-block.md"
 
-echo "Installed cost framework into $DEST"
+echo "Installed delegation framework into $DEST"
 echo "Settings backup: $BAK"
-echo "Next: turn ultracode off in the session UI, restart Claude Code, run bin/measure.sh in a project."
+echo "Next: restart Claude Code, then run bin/ledger.sh to see subagent usage for today."

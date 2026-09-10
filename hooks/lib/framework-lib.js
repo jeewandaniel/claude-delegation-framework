@@ -6,13 +6,6 @@ const path = require('path');
 const HOME = process.env.FRAMEWORK_HOME || path.join(os.homedir(), '.claude');
 
 const DEFAULTS = {
-  softThreshold: 150000,
-  hardThreshold: 190000,
-  softRemindEvery: 8,
-  hardRemindEvery: 3,
-  handoffStaleTokens: 20000,
-  readWarnLines: 300,
-  readWarnEvery: 5,
   ledger: true,
 };
 
@@ -35,35 +28,6 @@ function loadConfig(cwd) {
   const global = readJson(path.join(HOME, 'framework.json')) || {};
   const project = cwd ? (readJson(path.join(cwd, '.claude', 'framework.json')) || {}) : {};
   return { ...DEFAULTS, ...global, ...project };
-}
-
-function safeSession(id) {
-  return typeof id === 'string' && id.length > 0 && !/[/\\]|\.\./.test(id) ? id : null;
-}
-
-function auxPath(sessionId, name) {
-  return path.join(os.tmpdir(), `framework-${name}-${sessionId}.json`);
-}
-function readAux(sessionId, name) {
-  return readJson(auxPath(sessionId, name)) || {};
-}
-function writeAux(sessionId, name, obj) {
-  try { fs.writeFileSync(auxPath(sessionId, name), JSON.stringify(obj)); } catch { /* best effort */ }
-}
-
-const STATE_DEFAULTS = {
-  ctx: 0, floor: null, level: 'ok', startedAt: null,
-  handoffWrittenAt: null, handoffCtx: null, handoffAnnounced: false,
-  callsSinceMsg: 0, floorReported: false, unavailableReported: false,
-  // Byte offset into the transcript at the moment of a SessionStart "compact": usage lines
-  // starting before this offset predate the compaction and must never be measured as current.
-  ignoreBefore: null,
-};
-function readState(sessionId) {
-  return { ...STATE_DEFAULTS, ...readAux(sessionId, 'ctx') };
-}
-function writeState(sessionId, st) {
-  writeAux(sessionId, 'ctx', st);
 }
 
 function usageTotal(u) {
@@ -167,39 +131,7 @@ function sumOutputTokens(transcriptPath) {
   return readable && seen ? sum : null;
 }
 
-// GSD statusline bridge fallback. Only usable if the bridge carries the window size.
-function bridgeContext(sessionId) {
-  const b = readJson(path.join(os.tmpdir(), `claude-ctx-${sessionId}.json`));
-  if (!b || typeof b.remaining_percentage !== 'number' || !(b.context_window_size > 0)) return null;
-  return Math.round(b.context_window_size * (100 - b.remaining_percentage) / 100);
-}
-
-function memoryDir(transcriptPath) {
-  return path.join(path.dirname(transcriptPath), 'memory');
-}
-function handoffPath(transcriptPath) {
-  return path.join(memoryDir(transcriptPath), 'handoff.md');
-}
-
-function k(n) {
-  return `${Math.round(n / 1000)}k`;
-}
-
-function emit(eventName, additionalContext) {
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: eventName, additionalContext } }));
-}
-
-function isSubagent(input) {
-  return Boolean(input && input.agent_id);
-}
-
-function samePath(a, b) {
-  try { return path.resolve(String(a)) === path.resolve(String(b)); } catch { return false; }
-}
-
 module.exports = {
-  HOME, DEFAULTS, readStdin, readJson, loadConfig, safeSession,
-  auxPath, readAux, writeAux, readState, writeState,
-  measureContext, sumOutputTokens, bridgeContext,
-  memoryDir, handoffPath, k, emit, isSubagent, samePath,
+  HOME, DEFAULTS, readStdin, readJson, loadConfig,
+  measureContext, sumOutputTokens,
 };

@@ -1,4 +1,3 @@
 {
-  "softThreshold": 150000,
-  "hardThreshold": 190000
+  "ledger": true
 }

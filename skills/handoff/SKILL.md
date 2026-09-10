@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Write the session handoff file so the session can be cleared without losing anything. Use when a hook message says CONTEXT soft or hard, when Jeewan asks to wrap up or pause, or before ending a long task. Writes handoff.md in the project's Claude memory directory, then tells Jeewan they can /clear.
+description: Write the session handoff file so a later session can pick the work up. Use only when Jeewan asks for a handoff or to wrap up. Writes handoff.md in the project's Claude memory directory and reports the path.
 ---
 
 # /handoff
@@ -9,7 +9,7 @@ Goal: the next session, starting on an empty context, continues without asking J
 
 ## Steps
 
-1. Locate the memory directory. The system prompt names it ("persistent file-based memory at ..."). If a hook message gave a handoff path, use exactly that path. Create the directory if it is missing.
+1. Locate the memory directory. The system prompt names it ("persistent file-based memory at ..."). If Jeewan gave a path, use exactly that path. Create the directory if it is missing.
 2. If `handoff.md` already exists there, rename it to `handoff-prev.md`, replacing any older `handoff-prev.md`.
 3. List every file you touched this session (edits, writes, commits) by scanning what you actually did, not from memory. Include paths outside the project if you touched them.
 4. Run the verification commands you are about to list (tests, build, curl) when they are cheap, and record their real output. If you did not run one, write "not run".
@@ -45,12 +45,11 @@ Handoff saved: <path>
 - Next: <one line>
 - Open: <one line or "none">
 - Verify: <one command or "none">
-You can /clear now. The next session will load this automatically.
 ```
 
 ## Rules
 
-- Write `handoff.md` with the Write tool, not through Bash (`sed`, heredocs); the hooks detect the Write tool immediately.
+- Write `handoff.md` with the Write tool, not through Bash (`sed`, heredocs).
 - Start no new work once the handoff begins.
 - Do not summarise from memory when the transcript has the facts.
 - Every decision line carries evidence or says "no evidence, judgment call".

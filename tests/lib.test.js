@@ -121,35 +121,5 @@ test('loadConfig merges defaults, global and project files', () => {
   const cfg = lib.loadConfig(proj);
   assert.equal(cfg.softThreshold, 1);
   assert.equal(cfg.hardThreshold, 2);
-  assert.equal(cfg.softRemindEvery, 8);
-  assert.equal(cfg.readWarnLines, 300);
-  assert.equal(cfg.handoffStaleTokens, 20000);
-});
-
-test('handoffPath derives from transcript path', () => {
-  const lib = loadLib(tmp());
-  assert.equal(lib.handoffPath('/x/y/s.jsonl'), path.join('/x/y', 'memory', 'handoff.md'));
-  assert.equal(lib.memoryDir('/x/y/s.jsonl'), path.join('/x/y', 'memory'));
-});
-
-test('safeSession rejects traversal and k formats thousands', () => {
-  const lib = loadLib(tmp());
-  assert.equal(lib.safeSession('abc-123'), 'abc-123');
-  assert.equal(lib.safeSession('../x'), null);
-  assert.equal(lib.safeSession('a/b'), null);
-  assert.equal(lib.safeSession(''), null);
-  assert.equal(lib.k(168154), '168k');
-  assert.equal(lib.k(20000), '20k');
-});
-
-test('state round-trips through aux files in tmpdir', () => {
-  const T = tmp();
-  process.env.TMPDIR = T;
-  const lib = loadLib(T);
-  const st = lib.readState('s9');
-  assert.equal(st.level, 'ok');
-  st.level = 'soft';
-  lib.writeState('s9', st);
-  assert.equal(lib.readState('s9').level, 'soft');
-  assert.ok(fs.existsSync(path.join(T, 'framework-ctx-s9.json')));
+  assert.equal(cfg.ledger, true, 'defaults still merged in');
 });

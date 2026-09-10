@@ -21,29 +21,24 @@ test('installs files, merges settings, preserves existing hooks and CLAUDE.md, a
 
   const r1 = install(T);
   assert.equal(r1.status, 0, r1.stderr + r1.stdout);
-  for (const f of ['hooks/ctx-meter.js', 'hooks/ctx-guard.js', 'hooks/handoff-load.js', 'hooks/read-warn.js', 'hooks/ledger.js', 'hooks/lib/framework-lib.js',
+  for (const f of ['hooks/ledger.js', 'hooks/lib/framework-lib.js',
     'agents/scout.md', 'agents/researcher.md', 'agents/worker.md', 'agents/builder.md', 'agents/judge.md', 'agents/decider.md',
     'skills/handoff/SKILL.md', 'framework.json']) {
     assert.ok(fs.existsSync(path.join(T, f)), f);
   }
+  assert.deepEqual(fs.readdirSync(path.join(T, 'hooks')).sort(), ['ledger.js', 'lib'], 'only the ledger hook is installed');
   const s1 = JSON.parse(fs.readFileSync(path.join(T, 'settings.json'), 'utf8'));
   assert.equal(s1.model, 'sonnet');
   assert.equal(s1.autoCompactWindow, 220000);
   assert.equal(s1.disableClaudeAiConnectors, true);
   assert.equal(s1.theme, 'dark', 'unrelated keys preserved');
   assert.ok(commandsFor(s1, 'PostToolUse').includes('node /gsd/context-monitor.js'), 'existing hook preserved');
-  assert.equal(commandsFor(s1, 'PostToolUse').filter((c) => c.includes('ctx-meter.js')).length, 1);
-  assert.equal(commandsFor(s1, 'PostToolUse').filter((c) => c.includes('read-warn.js')).length, 1);
-  assert.equal(commandsFor(s1, 'UserPromptSubmit').filter((c) => c.includes('ctx-meter.js')).length, 1);
-  assert.equal(commandsFor(s1, 'PreToolUse').filter((c) => c.includes('ctx-guard.js')).length, 1);
-  assert.equal(commandsFor(s1, 'SessionStart').filter((c) => c.includes('handoff-load.js')).length, 1);
   assert.equal(commandsFor(s1, 'SubagentStart').filter((c) => c.includes('ledger.js')).length, 1);
   assert.equal(commandsFor(s1, 'SubagentStop').filter((c) => c.includes('ledger.js')).length, 1);
-  const sessionStart = s1.hooks.SessionStart.find((e) => e.hooks[0].command.includes('handoff-load.js'));
-  assert.equal(sessionStart.matcher, 'startup|resume|clear|compact');
-  const guard = s1.hooks.PreToolUse.find((e) => e.hooks[0].command.includes('ctx-guard.js'));
-  assert.equal(guard.matcher, 'Edit|Write|MultiEdit|NotebookEdit');
-  assert.ok(commandsFor(s1, 'PostToolUse').find((c) => c.includes('ctx-meter.js')).startsWith(`"${process.execPath}"`) || commandsFor(s1, 'PostToolUse').find((c) => c.includes('ctx-meter.js')).includes('node'), 'absolute node path used');
+  assert.deepEqual(Object.keys(s1.hooks).sort(), ['PostToolUse', 'SubagentStart', 'SubagentStop'], 'only the ledger hooks are added');
+  assert.deepEqual(commandsFor(s1, 'PostToolUse'), ['node /gsd/context-monitor.js'], 'no framework hook added to PostToolUse');
+  const start = commandsFor(s1, 'SubagentStart')[0];
+  assert.ok(start.startsWith(`"${process.execPath}"`) || start.includes('node'), 'absolute node path used');
   assert.ok(fs.readdirSync(T).some((f) => f.startsWith('settings.json.bak-')), 'backup written');
 
   const md1 = fs.readFileSync(path.join(T, 'CLAUDE.md'), 'utf8');

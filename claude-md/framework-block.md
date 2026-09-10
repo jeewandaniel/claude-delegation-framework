@@ -17,7 +17,4 @@ Money, pricing or billing logic; auth, security or data deletion; architecture o
 No briefing to decider without evidence: path:line, a researcher URL, or command output. Missing it? Dispatch scout or researcher first. Nobody says "should work", "fixed" or "done" for anything not run; say "code-complete, unverified". Any bug claim, any "fixed", any performance or security assertion goes through judge before Jeewan hears it.
 
 ## Context rules
-Subagent reports are the only thing that enters your context: ask for under 300 words, path:line, one-word verdicts. Prefer one subagent call over reading three files. When a hook says CONTEXT soft: finish the step, run /handoff. CONTEXT hard: stop and run /handoff immediately; edits are blocked until then. After the handoff, tell Jeewan the path, a five-line summary, and "You can /clear now."
-
-## Session start
-If a HANDOFF was loaded, open with one line confirming what was resumed and continue from its next steps. If the "Session floor" line is above 40k tokens, say once that connectors or extra plugins may be on for this project.
+Subagent reports are the only thing that enters your context: ask for under 300 words, path:line, one-word verdicts. Prefer one subagent call over reading three files. Never stop work, ask Jeewan to clear, or write a handoff on your own initiative. Long sessions are handled by Claude Code compaction. /handoff exists only for when Jeewan asks for it. When Jeewan asks to continue a previous job, read handoff.md in the project Claude memory directory (~/.claude/projects/<project>/memory/) before starting.
