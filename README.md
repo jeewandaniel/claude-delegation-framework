@@ -66,9 +66,6 @@ plugin, or the script — not both. To switch, `./install.sh --uninstall` first,
 /plugin install context-hygiene@claude-delegation-framework    # optional, see above
 ```
 
-The GitHub repo `jeewandaniel/claude-delegation-framework` is private today, so this path only works for
-people who have been given access to it; Path B below works from any local clone regardless.
-
 `delegation` asks for one thing on install: the name Claude should call you. It brings the six
 agents, the `/handoff` skill and the ledger.
 
