@@ -1,6 +1,6 @@
 # <Project name>
 
-<!-- Thin per-project file. Global rules come from ~/.claude/CLAUDE.md (cost framework). Put only project-specific facts here. -->
+<!-- Thin per-project file. Global rules come from ~/.claude/CLAUDE.md (delegation framework). Put only project-specific facts here. -->
 
 ## What this is
 <one paragraph>

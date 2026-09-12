@@ -26,7 +26,7 @@ function readJson(...p) {
 
 test('marketplace.json parses and lists both plugins with the required fields', () => {
   const m = readJson('.claude-plugin', 'marketplace.json');
-  assert.equal(m.name, 'claude-cost-framework');
+  assert.equal(m.name, 'claude-delegation-framework');
   assert.equal(typeof m.owner.name, 'string');
   assert.ok(m.owner.name.length > 0);
   assert.equal(m.plugins.length, 2);

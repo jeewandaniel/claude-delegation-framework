@@ -1,13 +1,35 @@
 # Claude Delegation Framework
 
-Global Claude Code setup for model delegation. Three pieces:
+Claude Code setup that makes the model you are talking to hand work to cheaper helpers, and keeps
+the expensive ones for building, checking and deciding.
 
-1. **Routing.** Sonnet main loop, six agents: scout (Haiku), researcher (Sonnet), worker (Sonnet), builder (Opus), judge (Opus), decider (Fable). The ladder, the escalation triggers and the evidence rule live in the global CLAUDE.md block (`claude-md/framework-block.md`).
-2. **Ledger.** `hooks/ledger.js` runs on SubagentStart and SubagentStop and appends one JSON record per event to `~/.claude/framework/ledger/<YYYY-MM-DD>.jsonl` (agent type, model, duration, and the subagent's own context and output tokens). `bin/ledger.sh` summarises a day. Nothing else hooks into a session.
-3. **MCP scoping.** Account connectors off globally, back on per project with `templates/project/.claude/settings.json`.
+## Why this exists
+
+A Claude Code session runs every turn on one model. Start it on the most capable one and that
+model also does the lookups, the file reads and the routine edits, none of which needed it. On a
+plan with usage limits, that is where the allowance goes. This framework gives the session a
+ladder of helper agents and rules for which rung gets what, so the model you are talking to does
+the thinking and the helpers do the legwork.
+
+## What it does
+
+1. **Routing.** Six helper agents, each pinned to a model: scout (Haiku) for lookups, researcher and worker (Sonnet) for reading and bounded changes, builder and judge (Opus) for hard work and verification, decider (Fable) for decisions. The ladder, the escalation triggers and the evidence rule live in a block added to your global CLAUDE.md (`claude-md/framework-block.md`).
+2. **Evidence rule.** Nothing is reported as fixed or done unless it was actually run. Bug claims and fixes go through the judge before they reach you.
+3. **Ledger.** `hooks/ledger.js` runs on SubagentStart and SubagentStop and appends one JSON record per helper call to `~/.claude/framework/ledger/<YYYY-MM-DD>.jsonl` (agent type, model, duration, and the helper's own context and output tokens). `bin/ledger.sh` summarises a day, so you can see where the work went. Nothing else hooks into a session.
+4. **Connector scoping.** Account connectors off globally, back on per project with `templates/project/.claude/settings.json`.
+
+## What it does not do
+
+It never changes the model of the chat you are in. That is set by you, with the model picker or
+`/model`, and it stays put for the whole session. On Fable, the framework makes Fable delegate
+lookups and small builds downward. On Sonnet, it makes Sonnet delegate downward to Haiku and
+upward to Opus and Fable helpers for hard builds, checks and decisions. The helpers move up and
+down the ladder; the main chat does not.
+
+It also makes no promises about cost or quality. The ledger exists so you can measure your own
+usage before and after.
 
 `/handoff` (`skills/handoff/SKILL.md`) is a manual skill: it runs only when you ask for a handoff. By default no hook triggers it, and nothing meters or blocks on context size — long sessions are left to Claude Code's own compaction. The optional module below changes that.
-
 
 ## Optional: context hygiene
 
@@ -34,17 +56,17 @@ Two paths. The plugin is the quick one; the script is the complete one.
 **Pick one path.** Installing the plugin *and* running `install.sh` on the same machine registers
 the agent ledger twice (duplicate records) and reads the framework rules to Claude twice. Use the
 plugin, or the script — not both. To switch, `./install.sh --uninstall` first, or
-`/plugin uninstall delegation@claude-cost-framework`.
+`/plugin uninstall delegation@claude-delegation-framework`.
 
 ### Path A — Plugin (two commands)
 
 ```
-/plugin marketplace add jeewandaniel/claude-cost-framework
-/plugin install delegation@claude-cost-framework
-/plugin install context-hygiene@claude-cost-framework    # optional, see above
+/plugin marketplace add jeewandaniel/claude-delegation-framework
+/plugin install delegation@claude-delegation-framework
+/plugin install context-hygiene@claude-delegation-framework    # optional, see above
 ```
 
-The GitHub repo `jeewandaniel/claude-cost-framework` is private today, so this path only works for
+The GitHub repo `jeewandaniel/claude-delegation-framework` is private today, so this path only works for
 people who have been given access to it; Path B below works from any local clone regardless.
 
 `delegation` asks for one thing on install: the name Claude should call you. It brings the six

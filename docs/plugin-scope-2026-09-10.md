@@ -36,7 +36,7 @@ Today the ladder rules sit in CLAUDE.md, which Claude Code reloads into every se
 ## Marketplace and visibility
 
 - Minimal `.claude-plugin/marketplace.json`: `name`, `owner.name`, `plugins[]` each with `name` + `source`.
-- Repo does NOT need to be public. `/plugin marketplace add jeewandaniel/claude-cost-framework` works from a private repo over SSH or with `gh auth` credentials. Going public is a separate choice.
+- Repo does NOT need to be public. `/plugin marketplace add jeewandaniel/claude-delegation-framework` works from a private repo over SSH or with `gh auth` credentials. Going public is a separate choice.
 - Updates: bump `version` in plugin.json; users get it on their next update check.
 
 ## Recommended shape
