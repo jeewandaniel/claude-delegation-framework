@@ -7,7 +7,11 @@
     "url": "https://github.com/jeewandaniel"
   },
   "repository": "https://github.com/jeewandaniel/claude-cost-framework",
-  "keywords": ["agents", "delegation", "handoff"],
+  "keywords": [
+    "agents",
+    "delegation",
+    "handoff"
+  ],
   "userConfig": {
     "name": {
       "type": "string",
@@ -16,5 +20,6 @@
       "default": "the user",
       "sensitive": false
     }
-  }
+  },
+  "license": "MIT"
 }

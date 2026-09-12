@@ -8,7 +8,6 @@ Global Claude Code setup for model delegation. Three pieces:
 
 `/handoff` (`skills/handoff/SKILL.md`) is a manual skill: it runs only when you ask for a handoff. By default no hook triggers it, and nothing meters or blocks on context size — long sessions are left to Claude Code's own compaction. The optional module below changes that.
 
-Design (historical, describes the original context-hygiene version): `docs/superpowers/specs/2026-09-02-cost-framework-design.md`.
 
 ## Optional: context hygiene
 
@@ -144,3 +143,7 @@ bin/measure.sh --bare     # user settings off too
 
 - The transcript format is undocumented. If it changes, the ledger's `context_tokens` / `output_tokens` fields are simply absent from the records.
 - Whether the desktop app honours the per-project `disableClaudeAiConnectors` override is confirmed by reading `bin/measure.sh` output, not assumed.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
